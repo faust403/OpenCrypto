@@ -2,27 +2,44 @@ cmake_minimum_required(VERSION 3.17)
 
 project(libcryptocxx VERSION 1.0.0 LANGUAGES CXX C)
 
+include(GNUInstallDirs)
+
 set(headers
       include/libcryptocxx/block.h
       #...
 )
 set(sources
       ${headers}
-      lib/block.cxx
+      src/block.cxx
       #...
 )
 
-option(BUILD_SHARED "Shared building" ON)
-option(DEBUG "Debug version" ON)
+# -D опции указываются на этапе конфигурирования(т.е. перед cmake --build {...})
+# cmake -S ./ -B build -D BUILD_SHARED_LIBS=OFF -----=> cmake --build {build, build-so}
+# cmake -S ./ -B build-so -D BUILD_SHARED_LIBS=ON --/
+option(BUILD_SHARED_LIBS "Shared building mode" ON)
+option(CMAKE_BUILD_TYPE "Library's build type (Debug/Release)" OFF)
 
-if(BUILD_SHARED)
-      add_library(libcryptocxx SHARED)
-else()
-      add_library(libcryptocxx STATIC)
-endif()
+# Создаю таргет библиотеки
+add_library(libcryptocxx)
 
-if(DEBUG)
-      target_compile_optoins(libcryptocxx PUBLIC -Wall -march=native -O0 -g)
-else()
-      target_compile_optoins(libcryptocxx PUBLIC -Wall -march=native -O3)
-endif()
+# Добавляю сурсы
+# INTERFACE - говорит что будет использоваться только снаружи моей цели
+# PRIVATE - говорит что будет использоваться только внутри моей цели
+# PUBLIC - говорит что будет использоваться и внутри и снаружи моей цели
+# скрываю не библиотеки, а исходники
+# libcryptocxx:
+# private:
+#    sources [src/block.cxx]
+# public:
+#    includes ["{cmake_current_source_dir}/include"
+target_sources(
+      libcryptocxx PRIVATE
+      ${sources}
+)
+
+# Для красивого <libcryptocxx/header.h>
+target_include_directories(
+      libcryptocxx PUBLIC
+      ${PROJECT_SOURCE_DIR}/include
+)
