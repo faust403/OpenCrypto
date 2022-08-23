@@ -1,5 +1,7 @@
 Language: Cpp
 
+IndentWidth: 6
+ColumnLimit: 100
 
 # ===================Variable declarations=================== #
 # int         a = ...;
@@ -12,6 +14,65 @@ AlignConsecutiveAssignments: AcrossEmptyLinesAndComments
 
 AlignConsecutiveMacros: AcrossEmptyLinesAndComments
 PointerAlignment: Middle
+SpaceBeforeAssignmentOperators: true # a += 2
 # ===================Function declarations=================== #
-AllowAllParametersOfDeclarationOnNextLine: true
+AlwaysBreakTemplateDeclarations: Yes
+BinPackParameters: true
+BinPackArguments: false
 # =====================Class declarations==================== #
+BreakConstructorInitializers: AfterColon
+SpaceBeforeInheritanceColon: true # class A : B
+IndentAccessModifiers: true
+
+EmptyLineBeforeAccessModifier: Always
+EmptyLineAfterAccessModifier: Never
+
+BreakBeforeConceptDeclarations: Never
+# =====================Templates============================= #
+SpacesInAngles: Never
+RequiresClausePosition: WithPreceding
+# ===========================Brackets======================== #
+BreakBeforeBraces: Custom
+SpaceBeforeParens: Custom
+
+IndentPPDirectives: AfterHash
+IncludeBlocks: Regroup
+
+RemoveBracesLLVM: true
+SpaceInEmptyBlock: true # { }
+SpaceInEmptyParentheses: false # ( )
+SpacesInCStyleCastParentheses: false # (int)num
+SpaceBeforeRangeBasedForLoopColon: false # for()
+SpaceBeforeSquareBrackets: false # int arr[]
+SpaceBeforeCpp11BracedList: false # vector<int>{...}
+SpaceBeforeCaseColon: false # case N:
+SpaceAfterTemplateKeyword: true # template<>
+NamespaceIndentation: All
+IndentGotoLabels: false
+MaxEmptyLinesToKeep: 1
+InsertBraces: true
+IndentRequiresClause: true
+IndentExternBlock: AfterExternBlock
+IndentCaseLabels: true
+
+BraceWrapping:
+      AfterCaseLabel: true
+      AfterClass: true
+      AfterStruct: true
+      AfterFunction: true
+      AfterControlStatement: Always
+      AfterNamespace: true
+      AfterEnum: true
+      AfterUnion: true
+      AfterExternBlock: true
+
+      BeforeCatch: true
+      BeforeElse: false
+      BeforeLambdaBody: false
+SpaceBeforeParensOptions:
+      AfterControlStatements: false # if ()
+      AfterOverloadedOperator: true # Type operator<> ()
+      AfterFunctionDeclarationName: false
+      AfterRequiresInClause: true
+
+# Configured by https://clang.llvm.org/docs/ClangFormatStyleOptions.html
