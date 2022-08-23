@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.17)
 project(libcryptocxx VERSION 1.0.0 LANGUAGES CXX C)
 
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 set(headers
       include/libcryptocxx/block.h
@@ -18,6 +19,7 @@ set(sources
 # cmake -S ./ -B build -D BUILD_SHARED_LIBS=OFF -----=> cmake --build {build, build-so}
 # cmake -S ./ -B build-so -D BUILD_SHARED_LIBS=ON --/
 option(BUILD_SHARED_LIBS "Shared building mode" ON)
+option(DEBUG "Release version" ON)
 option(CMAKE_BUILD_TYPE "Library's build type (Debug/Release)" OFF)
 
 # Создаю таргет библиотеки
@@ -43,4 +45,20 @@ target_sources(
 target_include_directories(
       libcryptocxx PUBLIC
       ${PROJECT_SOURCE_DIR}/include
+)
+
+target_compile_options(
+      libcryptocxx PRIVATE -Wall -march=native -lstdc++
+)
+
+if(DEBUG)
+      target_compile_options(libcryptocxx PRIVATE -O0 -g)
+else()
+      target_compile_options(libcryptocxx PRIVATE -O3)
+endif()
+
+configure_package_config_file(
+      libcryptocxxConfig.cmake.in
+      ${PROJECT_SOURCE_DIR}/libcryptocxxConfig.cmake
+      INSTALL_DESTINATION ${PROJECT_SOURCE_DIR}
 )
