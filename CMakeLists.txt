@@ -29,10 +29,11 @@ add_library(libcryptocxx)
 # PUBLIC - говорит что будет использоваться и внутри и снаружи моей цели
 # скрываю не библиотеки, а исходники
 # libcryptocxx:
-# private:
-#    sources [src/block.cxx]
 # public:
-#    includes ["{cmake_current_source_dir}/include"
+#   private:
+#      sources [src/block.cxx]
+#   interface:
+#      includes ["{cmake_current_source_dir}/include"
 target_sources(
       libcryptocxx PRIVATE
       ${sources}
