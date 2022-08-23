@@ -1,0 +1,17 @@
+Language: Cpp
+
+
+# ===================Variable declarations=================== #
+# int         a = ...;
+# long double b = ...;
+AlignConsecutiveDeclarations: true
+# int         a       = ...;
+# long double b       = ...;
+# char *      pointer = ...;
+AlignConsecutiveAssignments: AcrossEmptyLinesAndComments
+
+AlignConsecutiveMacros: AcrossEmptyLinesAndComments
+PointerAlignment: Middle
+# ===================Function declarations=================== #
+AllowAllParametersOfDeclarationOnNextLine: true
+# =====================Class declarations==================== #
