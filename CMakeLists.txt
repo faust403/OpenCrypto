@@ -1,64 +1,87 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(libcryptocxx VERSION 1.0.0 LANGUAGES CXX C)
+project(
+      OpenCrypto
+      VERSION 1.0.0
+      DESCRIPTION "An C++ library for crpyto, which is partically supporting SIMD and functions for breaking the ciphers"
+      LANGUAGES CXX C
+)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-set(headers
-      include/libcryptocxx/block.h
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+
+set(PathToHeaders include/opencrypto)
+set(PathToSources src)
+set(
+      Headers
+      ${PathToHeaders}/block.h
       #...
 )
-set(sources
-      ${headers}
-      src/block.cxx
+set(
+      Sources
+      ${Headers}
+      ${PathToSources}/block.cxx
+      #...
+)
+set(
+      Tests
+      None
+      #...
+)
+set(
+      Benchmarks
+      None
       #...
 )
 
-# -D опции указываются на этапе конфигурирования(т.е. перед cmake --build {...})
-# cmake -S ./ -B build -D BUILD_SHARED_LIBS=OFF -----=> cmake --build {build, build-so}
-# cmake -S ./ -B build-so -D BUILD_SHARED_LIBS=ON --/
-option(BUILD_SHARED_LIBS "Shared building mode" ON)
-option(DEBUG "Release version" ON)
-option(CMAKE_BUILD_TYPE "Library's build type (Debug/Release)" OFF)
+option(BUILD_SHARED_LIBS "Build shared libs?" ON)
 
-# Создаю таргет библиотеки
-add_library(libcryptocxx)
+add_library(OpenCrypto)
 
-# Добавляю сурсы
-# INTERFACE - говорит что будет использоваться только снаружи моей цели
-# PRIVATE - говорит что будет использоваться только внутри моей цели
-# PUBLIC - говорит что будет использоваться и внутри и снаружи моей цели
-# скрываю не библиотеки, а исходники
-# libcryptocxx:
-# public:
-#   private:
-#      sources [src/block.cxx]
-#   interface:
-#      includes ["{cmake_current_source_dir}/include"
-target_sources(
-      libcryptocxx PRIVATE
-      ${sources}
-)
+target_sources(OpenCrypto PRIVATE ${Sources})
 
-# Для красивого <libcryptocxx/header.h>
 target_include_directories(
-      libcryptocxx PUBLIC
-      ${PROJECT_SOURCE_DIR}/include
+      OpenCrypto PUBLIC
+      $<BUILD_INTERFACE: ${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 
 target_compile_options(
-      libcryptocxx PRIVATE -Wall -march=native -lstdc++
+      OpenCrypto PUBLIC
+      $<$<CONFIG:DEBUG>: -ggdb; -g3; -O0; -march=native; -lstdc++; -std=c++23>
+      $<$<CONFIG:RELEASE>: -O3; -march=native; -lstdc++; -std=c++23>
+      $<$<CONFIG:RELEASEWITHDEBUG>: -ggdb; -g3; -O3; -march=native; -lstdc++; -std=c++23>
 )
 
-if(DEBUG)
-      target_compile_options(libcryptocxx PRIVATE -O0 -g)
-else()
-      target_compile_options(libcryptocxx PRIVATE -O3)
-endif()
+target_compile_definitions(
+      OpenCrypto PRIVATE
+      $<$<COMPILE_LANG_AND_ID:CXX,Clang>:COMPILING_CXX_WITH_CLANG
+      $<$<COMPILE_LANG_AND_ID:CXX,AppleClang>:COMPILING_CXX_WITH_APPLECLANG
+      $<$<COMPILE_LANG_AND_ID:CXX,GNU>:COMPILING_CXX_WITH_GCC
+      $<$<COMPILE_LANG_AND_ID:CXX,Intel>:COMPILING_CXX_WITH_INTEL
+)
 
-configure_package_config_file(
-      libcryptocxxConfig.cmake.in
-      ${PROJECT_SOURCE_DIR}/libcryptocxxConfig.cmake
-      INSTALL_DESTINATION ${PROJECT_SOURCE_DIR}
+install(
+      TARGETS OpenCrypto
+      EXPORT OpenCryptoPackageConfig
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+export(
+      TARGETS OpenCrypto
+      FILE ${CMAKE_CURRENT_BINARY_DIR}/cmake/opencrpyto-config.cmake
+)
+
+install(
+      EXPORT OpenCryptoPackageConfig
+      DESTINATION ${CMAKE_INSTALL_DATADIR}/OpenCrpyto/cmake
+)
+
+write_basic_package_version_file(
+      ${CMAKE_CURRENT_BINARY_DIR}/cmake/OpenCryptoVersion.cmake
+      VERSION ${OpenCrypto_VERSION}
+      COMPATIBILITY AnyNewerVersion
 )
