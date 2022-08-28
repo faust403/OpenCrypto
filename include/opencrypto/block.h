@@ -57,9 +57,9 @@ class Block
             constexpr Block & resize(const Type NewSize) noexcept
             {
                   static_assert(std::is_integral_v<Type>, "Type is not an integral, however should be");
-                  if(NewSize == Length or NewSize < 0)
+                  if(NewSize == Length)
                         return *this;
-                  if(NewSize == 0)
+                  if(NewSize <= 0)
                   {
                         this->clear();
                         return *this;
@@ -106,17 +106,14 @@ class Block
                                     StringResult = Result.str();
 
                                     StringResult.erase(StringResult.begin());
-                                    std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
-                                    return StringResult;
                               } else
                               {
                                     for(; Iterator < this->Length; ++Iterator)
                                           Result << std::bitset<8>{static_cast<unsigned int>(this->Bytes[Iterator])}.to_string();
                                     StringResult = Result.str();
-
-                                    std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
-                                    return StringResult;
                               }
+                              std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
+                              return StringResult;
                         case 8:
                               Result.setf(std::ios_base::oct, std::ios_base::basefield);
                               break;
@@ -139,17 +136,15 @@ class Block
                         StringResult = Result.str();
 
                         StringResult.erase(StringResult.begin());
-                        std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
-                        return StringResult;
                   } else
                   {
                         for(; Iterator < this->Length; ++Iterator)
                               Result << static_cast<unsigned int>(this->Bytes[Iterator]);
                         StringResult = Result.str();
-
-                        std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
-                        return StringResult;
                   }
+
+                  std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
+                  return StringResult;
             }
             Block & operator+= (const Block & Other) noexcept;
             Block & operator+= (const Block && Other) noexcept;
