@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
@@ -20,6 +21,9 @@ class Block
 
       public:
             constexpr explicit Block(void) noexcept : Bytes(new unsigned char[Size]) { }
+            constexpr explicit Block(const Block & Other) noexcept { std::memcpy(this->Bytes, Other.data(), this->Length); }
+            constexpr explicit Block(const Block && Other) noexcept : Bytes(std::move(Other.data())) { Other.clear(); }
+            constexpr explicit Block(const unsigned char * NewBytes) { std::memcpy(this->Bytes, NewBytes, this->Length); }
             virtual ~Block(void) noexcept { delete this->Bytes; }
 
             template <typename... Args>
@@ -33,10 +37,10 @@ class Block
                         throw std::out_of_range("Block is empty(non-valid)");
                   } else
                   {
-                        std::array<unsigned char, sizeof...(args)>        CurrentBytes = std::array{std::forward<Args>(args)...};
-                        typename decltype(CurrentBytes)::reverse_iterator IteratorArgs = CurrentBytes.rbegin();
+                        std::array<unsigned char, sizeof...(args)> CurrentBytes = std::array{std::forward<Args>(args)...};
+                        typename decltype(CurrentBytes)::iterator  IteratorArgs = CurrentBytes.begin();
 
-                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < Length and IteratorArgs != CurrentBytes.rend();)
+                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < Length and IteratorArgs != CurrentBytes.end();)
                         {
                               this->Bytes[IteratorBytes] = *IteratorArgs;
                               ++IteratorArgs;
@@ -57,6 +61,7 @@ class Block
             constexpr Block & resize(const Type NewSize) noexcept
             {
                   static_assert(std::is_integral_v<Type>, "Type is not an integral, however should be");
+
                   if(NewSize == Length)
                         return *this;
                   if(NewSize <= 0)
@@ -146,6 +151,16 @@ class Block
                   std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
                   return StringResult;
             }
+            // TODO
+            std::string bignum(void) const noexcept
+            {
+                  std::string Result = "";
+
+                  return Result;
+            }
+            // Use this field read-only!
+            const unsigned char * data(void) noexcept { return this->Bytes; }
+
             Block & operator+= (const Block & Other) noexcept;
             Block & operator+= (const Block && Other) noexcept;
             Block & operator+= (const unsigned char * Other) noexcept;
@@ -215,5 +230,30 @@ class Block
             Block &         operator~(void) noexcept;
             unsigned char * operator* (void) noexcept;
             unsigned char & operator[] (const std::uint64_t Index) noexcept;
+};
+template <std::uint64_t Size = 0>
+class Informative_Block : public Block<Size>
+{
+      public:
+            constexpr explicit Informative_Block(void) noexcept = default;
+            ~Informative_Block(void) noexcept                   = default;
+};
+template <std::uint64_t Size = 0>
+class VBlock
+{
+      private:
+            unsigned char * Bytes;
+            std::uint64_t   Length = Size;
+
+      public:
+            constexpr explicit VBlock(void) noexcept = default;
+            virtual ~VBlock(void) noexcept { delete this->Bytes; }
+};
+template <std::uint64_t Size = 0>
+class Informative_VBlock : public VBlock<Size>
+{
+      public:
+            constexpr explicit Informative_VBlock(void) noexcept = default;
+            ~Informative_VBlock(void) noexcept                   = default;
 };
 #endif
