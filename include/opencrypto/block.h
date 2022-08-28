@@ -1,17 +1,25 @@
 #ifndef __BLOCK_H__
 #define __BLOCK_H__
 
+#include <algorithm>
+#include <bitset>
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
+#include <ios>
+#include <iostream>
+#include <opencrypto/constants.h>
+#include <sstream>
+#include <string>
 #include <string_view>
 #include <type_traits>
 
 class Byte
 {
       protected:
-            unsigned char __Byte = 0;
-            std::uint64_t __NS   = 10;
+            unsigned char    __Byte   = 0;
+            std::uint64_t    __NS     = 10;
+            std::string_view __Format = "";
 
       public:
             constexpr explicit Byte(void) noexcept = default;
@@ -19,27 +27,53 @@ class Byte
             constexpr explicit Byte(const Type Data) noexcept : __Byte(Data)
             {
                   static_assert(std::is_integral_v<Type>,
-                                "Constructor Byte(const Type) have got non-integral Type as argument. Integral Required");
+                                "Constructor Byte(const Type) have got non-integral Type as argument. Integral required");
                   static_assert(std::is_same_v<unsigned char, Type>,
                                 "Constructor Byte(const Type) have got non-uchar Type as argument. Unsigned char required");
             }
             virtual ~Byte(void) noexcept = default;
 
-            constexpr std::string_view hex(void) noexcept;
-            constexpr std::string_view bin(void) noexcept;
-            constexpr std::string_view dec(void) noexcept;
+            constexpr Byte & hex(void) noexcept { return this->transform(16); }
+            constexpr Byte & bin(void) noexcept { return this->transform(2); }
+            constexpr Byte & dec(void) { return this->transform(10); }
+            std::string_view ascii(void) noexcept
+            {
+                  return std::string{const_cast<const char *>(reinterpret_cast<char *>(&this->__Byte)), 1} +
+                         std::string{this->__Format.data(), this->__Format.size()};
+            }
 
             template <typename Type>
             constexpr Byte & transform(const Type NS) noexcept
             {
                   static_assert(std::is_integral_v<Type>,
-                                "Method Byte::transform(const Type) have got non-integral Type as argument. Integral Required");
+                                "Method Byte::transform(const Type) have got non-integral Type as argument. Integral required");
+                  this->__NS = NS;
+                  return *this;
+            }
+            constexpr Byte & format(const std::string_view NewFormat) noexcept
+            {
+                  this->__Format = NewFormat;
                   return *this;
             }
 
-            constexpr unsigned char ascii(void) noexcept;
-
-            constexpr unsigned char get(void) noexcept;
+            std::string get(void) noexcept
+            {
+                  const int Copy = static_cast<int>(this->__Byte);
+                  switch(this->__NS)
+                  {
+                        case 10:
+                              return (std::ostringstream{} << Copy << std::string{this->__Format}).str();
+                        case 8:
+                              return (std::ostringstream{} << std::uppercase << std::oct << Copy << std::string{this->__Format})
+                                  .str();
+                        case 16:
+                              return (std::ostringstream{} << std::uppercase << std::hex << Copy << std::string{this->__Format})
+                                  .str();
+                        case 2:
+                              return std::bitset<8>{Copy}.to_string() + std::string{this->__Format};
+                  }
+                  // Other sutiations
+            }
             template <typename Type>
             constexpr void set(const Type Data) noexcept
             {

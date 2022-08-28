@@ -7,6 +7,8 @@ project(
       LANGUAGES CXX C
 )
 
+set(CMAKE_CXX_STANDARD 23)
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
@@ -15,6 +17,7 @@ set(PathToSources src)
 set(
       Headers
       ${PathToHeaders}/block.h
+      ${PathToHeaders}/constants.h
       #...
 )
 set(
