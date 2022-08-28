@@ -2,143 +2,223 @@
 #define __BLOCK_H__
 
 #include <algorithm>
+#include <array>
 #include <bitset>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
-#include <cstdlib>
-#include <ios>
-#include <iostream>
-#include <opencrypto/constants.h>
 #include <sstream>
-#include <string>
-#include <string_view>
+#include <stdexcept>
 #include <type_traits>
 
-class Byte
+template <std::uint64_t Size = 0>
+class Block
 {
-      protected:
-            unsigned char    __Byte   = 0;
-            std::uint64_t    __NS     = 10;
-            std::string_view __Format = "";
+      private:
+            unsigned char * Bytes  = NULL;
+            std::uint64_t   Length = Size;
 
       public:
-            constexpr explicit Byte(void) noexcept = default;
-            template <typename Type>
-            constexpr explicit Byte(const Type Data) noexcept : __Byte(Data)
-            {
-                  static_assert(std::is_integral_v<Type>,
-                                "Constructor Byte(const Type) have got non-integral Type as argument. Integral required");
-                  static_assert(std::is_same_v<unsigned char, Type>,
-                                "Constructor Byte(const Type) have got non-uchar Type as argument. Unsigned char required");
-            }
-            virtual ~Byte(void) noexcept = default;
+            constexpr explicit Block(void) noexcept : Bytes(new unsigned char[Size]) { }
+            virtual ~Block(void) noexcept { delete this->Bytes; }
 
-            constexpr Byte & hex(void) noexcept { return this->transform(16); }
-            constexpr Byte & bin(void) noexcept { return this->transform(2); }
-            constexpr Byte & dec(void) { return this->transform(10); }
-            std::string_view ascii(void) noexcept
+            template <typename... Args>
+            constexpr auto & fill(Args... args) const
             {
-                  return std::string{const_cast<const char *>(reinterpret_cast<char *>(&this->__Byte)), 1} +
-                         std::string{this->__Format.data(), this->__Format.size()};
-            }
+                  if(sizeof...(args) > Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
 
-            template <typename Type>
-            constexpr Byte & transform(const Type NS) noexcept
-            {
-                  static_assert(std::is_integral_v<Type>,
-                                "Method Byte::transform(const Type) have got non-integral Type as argument. Integral required");
-                  this->__NS = NS;
-                  return *this;
-            }
-            constexpr Byte & format(const std::string_view NewFormat) noexcept
-            {
-                  this->__Format = NewFormat;
-                  return *this;
-            }
-
-            std::string get(void) noexcept
-            {
-                  const int Copy = static_cast<int>(this->__Byte);
-                  switch(this->__NS)
+                  if(this->Bytes == NULL) [[unlikely]]
                   {
-                        case 10:
-                              return (std::ostringstream{} << Copy << std::string{this->__Format}).str();
-                        case 8:
-                              return (std::ostringstream{} << std::uppercase << std::oct << Copy << std::string{this->__Format})
-                                  .str();
-                        case 16:
-                              return (std::ostringstream{} << std::uppercase << std::hex << Copy << std::string{this->__Format})
-                                  .str();
-                        case 2:
-                              return std::bitset<8>{Copy}.to_string() + std::string{this->__Format};
+                        throw std::out_of_range("Block is empty(non-valid)");
+                  } else
+                  {
+                        std::array<unsigned char, sizeof...(args)>        CurrentBytes = std::array{std::forward<Args>(args)...};
+                        typename decltype(CurrentBytes)::reverse_iterator IteratorArgs = CurrentBytes.rbegin();
+
+                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < Length and IteratorArgs != CurrentBytes.rend();)
+                        {
+                              this->Bytes[IteratorBytes] = *IteratorArgs;
+                              ++IteratorArgs;
+                              ++IteratorBytes;
+                        }
                   }
-                  // Other sutiations
+                  return *this;
             }
-            template <typename Type>
-            constexpr void set(const Type Data) noexcept
+            constexpr Block & clear(void) noexcept
             {
-                  static_assert(std::is_integral_v<Type>,
-                                "Method Byte::set(const Type) have got non-integral Type. Integral required");
-                  static_assert(std::is_same_v<unsigned char, Type>,
-                                "Method Byte::set(const Type) have got non-uchar Type. Unsigned char required");
-                  this->__Byte = Data;
+                  delete this->Bytes;
+                  this->Bytes  = NULL;
+                  this->Length = 0;
+                  return *this;
             }
+            std::uint64_t size(void) const noexcept { return this->Length; }
+            template <typename Type>
+            constexpr Block & resize(const Type NewSize) noexcept
+            {
+                  static_assert(std::is_integral_v<Type>, "Type is not an integral, however should be");
+                  if(NewSize == Length or NewSize < 0)
+                        return *this;
+                  if(NewSize == 0)
+                  {
+                        this->clear();
+                        return *this;
+                  }
 
-            // Binary operators
-            constexpr bool operator== (Byte & Other) noexcept { return this->__Byte == *Other; }
-            constexpr bool operator!= (Byte & Other) noexcept { return this->__Byte != *Other; }
-            Byte           operator|| (Byte & Other) noexcept { return Byte{static_cast<unsigned char>(this->__Byte || *Other)}; }
-            Byte           operator&& (Byte & Other) noexcept { return Byte{static_cast<unsigned char>(this->__Byte && *Other)}; }
-            Byte           operator^ (Byte & Other) noexcept { return Byte{static_cast<unsigned char>(this->__Byte ^ *Other)}; }
-            constexpr Byte & operator= (Byte & Other) noexcept
-            {
-                  this->__Byte = *Other;
+                  unsigned char * NewBytes = new unsigned char[NewSize];
+
+                  std::uint64_t Iterator   = 0;
+                  if(NewSize > Length)
+                  {
+                        for(; Iterator < Length; ++Iterator)
+                              NewBytes[Iterator] = this->Bytes[Iterator];
+                        for(; Iterator <= NewSize; ++Iterator)
+                              NewBytes[Iterator] = NULL;
+                  } else if(NewSize < Length)
+                  {
+                        for(; Iterator <= NewSize; ++Iterator)
+                              NewBytes[Iterator] = this->Bytes[Iterator];
+                  }
+                  this->Length = NewSize;
+
+                  delete this->Bytes;
+                  this->Bytes = NewBytes;
                   return *this;
             }
-            constexpr Byte & operator&= (Byte & Other) noexcept
+            std::string string(std::uint64_t Period = 0, const char * Separator = "", const std::uint64_t NS = 10,
+                               int (*Case)(int) noexcept = ::toupper) const
             {
-                  this->__Byte &= *Other;
-                  return *this;
+                  std::ostringstream Result;
+                  std::string        StringResult;
+
+                  std::uint64_t Iterator = 0;
+                  switch(NS)
+                  {
+                        case 2:
+                              if(Period)
+                              {
+                                    for(; Iterator < this->Length; ++Iterator)
+                                    {
+                                          if(Iterator % Period == 0)
+                                                Result << Separator;
+                                          Result << std::bitset<8>{static_cast<unsigned int>(this->Bytes[Iterator])}.to_string();
+                                    }
+                                    StringResult = Result.str();
+
+                                    StringResult.erase(StringResult.begin());
+                                    std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
+                                    return StringResult;
+                              } else
+                              {
+                                    for(; Iterator < this->Length; ++Iterator)
+                                          Result << std::bitset<8>{static_cast<unsigned int>(this->Bytes[Iterator])}.to_string();
+                                    StringResult = Result.str();
+
+                                    std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
+                                    return StringResult;
+                              }
+                        case 8:
+                              Result.setf(std::ios_base::oct, std::ios_base::basefield);
+                              break;
+                        case 16:
+                              Result.setf(std::ios_base::hex, std::ios_base::basefield);
+                              break;
+                        default:
+                              Result.setf(std::ios_base::dec, std::ios_base::basefield);
+                              break;
+                  }
+
+                  if(Period)
+                  {
+                        for(; Iterator < this->Length; ++Iterator)
+                        {
+                              if(Iterator % Period == 0)
+                                    Result << Separator;
+                              Result << static_cast<unsigned int>(this->Bytes[Iterator]);
+                        }
+                        StringResult = Result.str();
+
+                        StringResult.erase(StringResult.begin());
+                        std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
+                        return StringResult;
+                  } else
+                  {
+                        for(; Iterator < this->Length; ++Iterator)
+                              Result << static_cast<unsigned int>(this->Bytes[Iterator]);
+                        StringResult = Result.str();
+
+                        std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
+                        return StringResult;
+                  }
             }
-            constexpr Byte & operator|= (Byte & Other) noexcept
-            {
-                  this->__Byte |= *Other;
-                  return *this;
-            }
-            constexpr Byte & operator^= (Byte & Other) noexcept
-            {
-                  this->__Byte ^= *Other;
-                  return *this;
-            }
-            template <typename Type>
-            constexpr Byte operator>> (const Type Shift) noexcept
-            {
-                  static_assert(std::is_integral_v<Type>, "operator >> have got non-integral operand. Integral required");
-                  return Byte{this->__Byte >> Shift};
-            }
-            template <typename Type>
-            constexpr Byte & operator>>= (const Type Shift) noexcept
-            {
-                  static_assert(std::is_integral_v<Type>, "operator >>= have got non-integral operand. Integral required");
-                  this->__Byte >>= Shift;
-                  return *this;
-            }
-            template <typename Type>
-            constexpr Byte operator<< (const Type Shift) noexcept
-            {
-                  static_assert(std::is_integral_v<Type>, "operator << have got non-integral operand. Integral required");
-                  return Byte{this->__Byte << Shift};
-            }
-            template <typename Type>
-            constexpr Byte & operator<<= (const Type Shift) noexcept
-            {
-                  static_assert(std::is_integral_v<Type>, "operator <<= have got non-integral operand. Integral required");
-                  this->__Byte <<= Shift;
-                  return *this;
-            }
-            // Unary operators
-            constexpr unsigned char & operator* (void) noexcept { return this->__Byte; }
-            Byte                      operator!(void) noexcept { return Byte{static_cast<unsigned char>(!this->__Byte)}; }
+            Block & operator+= (const Block & Other) noexcept;
+            Block & operator+= (const Block && Other) noexcept;
+            Block & operator+= (const unsigned char * Other) noexcept;
+            Block & operator-= (const Block & Other) noexcept;
+            Block & operator-= (const Block && Other) noexcept;
+            Block & operator-= (const unsigned char * Other) noexcept;
+            Block & operator= (const Block & Other) noexcept;
+            Block & operator= (const Block && Other) noexcept;
+            Block & operator= (const unsigned char * Other) noexcept;
+            Block & operator+ (const Block & Other) noexcept;
+            Block & operator+ (const Block && Other) noexcept;
+            Block & operator+ (const unsigned char * Other) noexcept;
+            Block & operator- (const Block & Other) noexcept;
+            Block & operator- (const Block && Other) noexcept;
+            Block & operator- (const unsigned char * Other) noexcept;
+
+            bool operator== (const Block & Other) noexcept;
+            bool operator== (const Block && Other) noexcept;
+            bool operator== (const unsigned char * Other) noexcept;
+            bool operator!= (const Block & Other) noexcept;
+            bool operator!= (const Block && Other) noexcept;
+            bool operator!= (const unsigned char * Other) noexcept;
+            bool operator> (const Block & Other) noexcept;
+            bool operator> (const Block && Other) noexcept;
+            bool operator> (const unsigned char * Other) noexcept;
+            bool operator>= (const Block & Other) noexcept;
+            bool operator>= (const Block && Other) noexcept;
+            bool operator>= (const unsigned char * Other) noexcept;
+            bool operator<(const Block & Other) noexcept;
+            bool operator<(const Block && Other) noexcept;
+            bool operator<(const unsigned char * Other) noexcept;
+            bool operator<= (const Block & Other) noexcept;
+            bool operator<= (const Block && Other) noexcept;
+            bool operator<= (const unsigned char * Other) noexcept;
+            bool operator&& (const Block & Other) noexcept;
+            bool operator&& (const Block && Other) noexcept;
+            bool operator&& (const unsigned char * Other) noexcept;
+            bool operator|| (const Block & Other) noexcept;
+            bool operator|| (const Block && Other) noexcept;
+            bool operator|| (const unsigned char * Other) noexcept;
+
+            Block & operator& (const Block & Other) noexcept;
+            Block & operator& (const Block && Other) noexcept;
+            Block & operator& (const unsigned char * Other) noexcept;
+            Block & operator&= (const Block & Other) noexcept;
+            Block & operator&= (const Block && Other) noexcept;
+            Block & operator&= (const unsigned char * Other) noexcept;
+            Block & operator| (const Block & Other) noexcept;
+            Block & operator| (const Block && Other) noexcept;
+            Block & operator| (const unsigned char * Other) noexcept;
+            Block & operator|= (const Block & Other) noexcept;
+            Block & operator|= (const Block && Other) noexcept;
+            Block & operator|= (const unsigned char * Other) noexcept;
+            Block & operator^ (const Block & Other) noexcept;
+            Block & operator^ (const Block && Other) noexcept;
+            Block & operator^ (const unsigned char * Other) noexcept;
+            Block & operator^= (const Block & Other) noexcept;
+            Block & operator^= (const Block && Other) noexcept;
+            Block & operator^= (const unsigned char * Other) noexcept;
+
+            Block & operator>> (const std::uint64_t Shift) noexcept;
+            Block & operator>>= (const std::uint64_t Shift) noexcept;
+            Block & operator<< (const std::uint64_t Shift) noexcept;
+            Block & operator<<= (const std::uint64_t Shift) noexcept;
+
+            Block &         operator!(void) noexcept;
+            Block &         operator~(void) noexcept;
+            unsigned char * operator* (void) noexcept;
+            unsigned char & operator[] (const std::uint64_t Index) noexcept;
 };
-
 #endif
