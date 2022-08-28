@@ -11,6 +11,7 @@ class Byte
 {
       protected:
             unsigned char __Byte = 0;
+            std::uint64_t __NS   = 10;
 
       public:
             constexpr explicit Byte(void) noexcept = default;
