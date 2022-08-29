@@ -14,6 +14,8 @@
 #include <stdexcept>
 #include <type_traits>
 
+// Class Block representing a sequential byte set with easy-to-use methods without vectorisation
+// Block<Starter Size>
 template <std::uint64_t Size = 0>
 class Block
 {
@@ -22,6 +24,8 @@ class Block
             std::uint64_t   Length = Size;
 
       public:
+            // Copy the Other Block to this. If you wrote Block<N> block(OtherBlock); | OtherBlock.size() = N+k, then
+            // block.size() = N+k | N, k ∈ ℤ, k >= N
             template <std::uint64_t NewSize>
             constexpr explicit Block(Block<NewSize> & Other) noexcept :
                 Length(Other.size()), Bytes(new unsigned char[Other.size()])
@@ -29,6 +33,8 @@ class Block
                   assert((void("Bad allocation in constructor"), this->Bytes != NULL));
                   std::memcpy(this->Bytes, Other.data(), this->Length);
             }
+            // Move the Other Block to this. If you wrote Block<N> block(move(OtherBlock)); | OtherBlock.size() = N+k, then
+            // block.size() = N+k | N, k ∈ ℤ, k >= N
             template <std::uint64_t NewSize>
             constexpr explicit Block(Block<NewSize> && Other) noexcept :
                 Length(Other.size()), Bytes(new unsigned char[Other.size()])
@@ -37,6 +43,8 @@ class Block
                   std::memcpy(this->Bytes, std::move(Other.data()), this->Length);
                   Other.clear();
             }
+            // Copy the dynamic array to this Block. If you wrote Block<N> block(ptr); | #ptr >= N, then
+            // block.size() = N. Otherwise it will considering memory rubbish | N ∈ ℤ
             template <typename Type>
             constexpr explicit Block(Type * NewBytes) noexcept : Bytes(new unsigned char[Size])
             {
@@ -45,6 +53,8 @@ class Block
                   assert((void("Bad allocation in constructor"), this->Bytes != NULL));
                   std::memcpy(this->Bytes, NewBytes, Size);
             }
+            // Copy the parameter pack to this Block. If you wrote Block<N> block(a1, a2, a3, ..., aN+k); | then
+            // block.size() = N+k | N, k ∈ ℤ, k >= N
             template <typename... Args>
             constexpr explicit Block(Args... args) noexcept : Length(sizeof...(args))
             {
@@ -52,21 +62,65 @@ class Block
                   assert((void("Bad allocation in constructor"), this->Bytes != NULL));
                   this->fill(args...);
             }
+            // Move the parameter pack to this Block. If you wrote Block<N> block(a1, a2, a3, ..., aN+k); | then
+            // block.size() = N+k | N, k ∈ ℤ, k >= N
+            template <typename... Args>
+            constexpr explicit Block(Args &&... args) : Block(args...)
+            {
+            }
+            // Simple constructor. If you wrote Block<N> block(); | then
+            // block.size() = N | N ∈ ℤ
             constexpr explicit Block(void) noexcept : Bytes(new unsigned char[Size])
             {
                   assert((void("Bad allocation in constructor"), this->Bytes != NULL));
-                  for(std::uint64_t Iterator = 0; Iterator != this->Length; ++Iterator)
-                        this->Bytes[Iterator] = NULL;
             }
+            // Simple distructor with deleting the Bytes field
             virtual ~Block(void) noexcept { delete this->Bytes; }
+            // Method, which is wrapping your byte sequence without copying
+            //
+            // If yoy will delete a pointer to Array, then Block->Bytes will be deleted also
+            //
+            // If ArraySize < 0, then it will throw an exception std::invalid_argument
+            //
+            // If ArraySize = 0, then Block->Bytes = NULL and Block->ArraySize = 0
+            //
+            // If #Array > ArraySize > 0, then NewBytes will be cutted
+            // If #Array < ArraySize < 0, then NewBytes will considering zeros or rubbish
+            // If #Array = ArraySize, then well done
+            template <typename Type>
+            constexpr Block & wrap(unsigned char * NewBytes, const Type ArraySize)
+            {
+                  static_assert(std::is_integral_v<Type>,
+                                "In method Block::wrap(unsigned char * Bytes, const Type ArraySize) Type is not an "
+                                "integral, however should be");
 
+                  if(ArraySize < 0)
+                  {
+                        throw std::invalid_argument("ArraySize is less than zero");
+                  } else if(ArraySize == 0)
+                  {
+                        this->Bytes  = NULL;
+                        this->Length = ArraySize;
+                  } else
+                  {
+                        this->Length = ArraySize;
+                        this->Bytes  = NewBytes;
+                  }
+            }
+
+            // Method, which is replacing elements of Block->Bytes from beginning by parameter pack
+            // Before: Block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℤ
+            // Block.fill(b1, b2, b3, ..., bM) | M ∈ ℕ, M <= N
+            // After: Block[b1, b2, b3, ..., bM, aM+1, aM+2, ..., aN] |  Block.size() = N
+            // If #Args > Block.size() or Block.size() == 0 or Block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
             template <typename... Args>
-            constexpr auto & fill(Args... args) const
+            constexpr auto & fill(Args... args)
             {
                   if(sizeof...(args) > Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
 
-                  if(this->Bytes == NULL) [[unlikely]]
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
                   {
                         throw std::out_of_range("Block is empty(non-valid)");
                   } else
@@ -74,7 +128,7 @@ class Block
                         std::array<unsigned char, sizeof...(args)> CurrentBytes = std::array{std::forward<Args>(args)...};
                         typename decltype(CurrentBytes)::iterator  IteratorArgs = CurrentBytes.begin();
 
-                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < Length and IteratorArgs != CurrentBytes.end();)
+                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorArgs != CurrentBytes.end();)
                         {
                               this->Bytes[IteratorBytes] = *IteratorArgs;
                               ++IteratorArgs;
@@ -83,6 +137,12 @@ class Block
                   }
                   return *this;
             }
+            // Method, which is eraing all data from Block
+            // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℤ
+            // Block.clear()
+            // After: Block[]
+            //        Block.size() = 0
+            //        Block.data() = NULL
             constexpr Block & clear(void) noexcept
             {
                   delete this->Bytes;
@@ -90,7 +150,21 @@ class Block
                   this->Length = 0;
                   return *this;
             }
+            // Method, which is returning a Block->Length field
             std::uint64_t size(void) const noexcept { return this->Length; }
+            // Method, which is resizing your Block.
+            // if arguments <= 0, then is will call Block->clear() method.
+            // Otherwise if Argument < Block.size(), that will cutting your Block
+            // Before: Block[a1, a2, a3, ..., aN] | N ∈ ℤ
+            // Block.resize(3)
+            // After: Block[a1, a2, a3]
+            //
+            // Otherwise if will adding zeros
+            // Before: Block[a1, a2, a3, ..., aN] | N ∈ ℤ
+            // Block.resize(N + k) | N ∈ ℤ, k ∈ ℕ
+            // After: Block[a1, a2, a3, ..., aN, aN+1 = 0, aN+2 = 0, ..., ak = 0]
+            //
+            // if Arguments is not an integral, than it will asserted
             template <typename Type>
             constexpr Block & resize(const Type NewSize) noexcept
             {
@@ -110,10 +184,10 @@ class Block
                   std::uint64_t Iterator = 0;
                   if(NewSize > Length)
                   {
-                        for(; Iterator < Length; ++Iterator)
+                        for(; Iterator < this->Length; ++Iterator)
                               NewBytes[Iterator] = this->Bytes[Iterator];
                         for(; Iterator <= NewSize; ++Iterator)
-                              NewBytes[Iterator] = NULL;
+                              NewBytes[Iterator] = 0;
                   } else if(NewSize < Length)
                   {
                         for(; Iterator <= NewSize; ++Iterator)
@@ -125,6 +199,21 @@ class Block
                   this->Bytes = NewBytes;
                   return *this;
             }
+            // Method, which is formatting a field Block->Bytes with conversation to std::string
+            // Period is a period of Separator meeting. For example
+            //__________________
+            // a1a2a3a4a5a6...aN -> Period = 0, ∀Separator | N ∈ ℕ
+            //_____________________
+            // a1a2:a3a4:a5a6:...aN -> Period = 2, Separator = ":" | N ∈ ℕ
+            // And thing so
+            //
+            // NS is following a number system that will be represented in std::string result
+            // 16 = hexademical
+            // 8 = octal
+            // 2 = binary
+            // otherwise will decimal
+            //
+            // Case is following an Uppercase or Lowercase symbols. You can choose them by ::toupper or ::tolower from STL
             std::string string(std::uint64_t Period = 0, const char * Separator = "", const std::uint64_t NS = 10,
                                int (*Case)(int) noexcept = ::toupper) const
             {
@@ -196,11 +285,16 @@ class Block
                   else
                         return "";
             }
+            // Method, which is pushing front a block.data()
+            // For example if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //                block2[b1, b2, b3, ..., bM] | M ∈ ℕ
+            // then block1.push_front(block2) is following
+            // block1[b1, b2, b3, ..., bM, a1, a2, a3, ..., aN] | block1.size() = N + M
+            // block2[b1, b2, b3, ..., bM]
             template <std::uint64_t BlockSize>
             constexpr Block & push_front(Block<BlockSize> & block) noexcept
             {
-                  const std::uint64_t PreviousSize = this->Length;
-                  const std::uint64_t NewSize      = block.size();
+                  const std::uint64_t NewSize = block.size();
                   this->Length += NewSize;
                   unsigned char *       NewBytes = new unsigned char[this->Length];
                   const unsigned char * Array    = block.data();
@@ -216,6 +310,12 @@ class Block
                   this->Bytes = NewBytes;
                   return *this;
             }
+            // Method, which is pushing front a block.data() and doing block->clear()
+            // For example if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //                block2[b1, b2, b3, ..., bM] | M ∈ ℕ
+            // then block1.push_front(block2) is following
+            // block1[b1, b2, b3, ..., bM, a1, a2, a3, ..., aN] | block1.size() = N + M
+            // block2[]
             template <std::uint64_t BlockSize>
             constexpr Block & push_front(Block<BlockSize> && block) noexcept
             {
@@ -223,27 +323,44 @@ class Block
                   block.clear();
                   return Res;
             }
+            // Method, which is pushing front a dynamic Array | #Array = ArraySize
+            // For example if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //                Array[b1, b2, b3, ..., bM] | M ∈ ℕ, M = ArraySize
+            // then block1.push_front(block2) is following
+            // block1[b1, b2, b3, ..., bM, a1, a2, a3, ..., aN] | block1.size() = N + M
+            // block2[b1, b2, b3, ..., bM]
+
+            // If ArraySize < #Array, then it will cutting Array
+            // else if ArraySize > #Array, then it will considering zeros or rubbish
+            //
+            // If ArraySize is not an integral type, then it will asserted you
             template <typename Type>
-            constexpr Block & push_front(unsigned char * Array, const Type NewSize) noexcept
+            constexpr Block & push_front(unsigned char * Array, const Type ArraySize) noexcept
             {
                   static_assert(std::is_integral_v<Type>,
-                                "In method Block::push_front(unsigned char * Array, const Type NewSize) Type is not an "
+                                "In method Block::push_front(unsigned char * Array, const Type ArraySize) Type is not an "
                                 "integral, however should be");
-                  const std::uint64_t PreviousSize = this->Length;
-                  this->Length += NewSize;
+
+                  this->Length += ArraySize;
                   unsigned char * NewBytes = new unsigned char[this->Length];
                   assert((void("Bad allocation in Block::push_front(Type Arg)"), NewBytes != NULL));
 
                   std::uint64_t Iterator = 0;
-                  for(; Iterator < NewSize; ++Iterator)
+                  for(; Iterator < ArraySize; ++Iterator)
                         NewBytes[Iterator] = Array[Iterator];
                   for(; Iterator < this->Length; ++Iterator)
-                        NewBytes[Iterator] = this->Bytes[Iterator - NewSize];
+                        NewBytes[Iterator] = this->Bytes[Iterator - ArraySize];
 
                   delete this->Bytes;
                   this->Bytes = NewBytes;
                   return *this;
             }
+            // Method, which is pushing front a parameter pack
+            // For example if block[a1, a2, a3, ..., aN] | N ∈ ℕ
+            // then block.push_front(b1, b2, b3, ..., bM) | M ∈ ℕ, M = sizeof...(args) is following
+            // block[b1, b2, b3, ..., bM, a1, a2, a3, ..., aN] | block.size() = N + M
+            //
+            // If ArraySize is not an integral type, then it will asserted you
             template <typename... Args>
             constexpr Block & push_front(Args... args) noexcept
             {
@@ -265,6 +382,12 @@ class Block
                   this->Bytes = NewBytes;
                   return *this;
             }
+            // Method, which is pushing back a block.data()
+            // For example if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //                block2[b1, b2, b3, ..., bM] | M ∈ ℕ
+            // then block1.push_front(block2) is following
+            // block1[a1, a2, a3, ..., aN, b1, b2, b3, ..., bM] | block1.size() = N + M
+            // block2[b1, b2, b3, ..., bM]
             template <std::uint64_t BlockSize>
             constexpr Block & push_back(Block<BlockSize> & block) noexcept
             {
@@ -274,20 +397,24 @@ class Block
                   assert((void("Bad allocation in Block::push_front(Type Arg)"), NewBytes != NULL));
 
                   const std::uint64_t ArraySize    = block.size();
-                  unsigned char *     CurrentBytes = new unsigned char[ArraySize];
-                  std::memcpy(CurrentBytes, block.data(), ArraySize);
+                  unsigned char *     CurrentBytes = block.data();
 
-                  std::uint64_t Iterator = 0;
+                  std::uint64_t Iterator           = 0;
                   for(; Iterator < PreviousSize; ++Iterator)
                         NewBytes[Iterator] = this->Bytes[Iterator];
                   for(; Iterator < this->Length; ++Iterator)
                         NewBytes[Iterator] = CurrentBytes[Iterator - PreviousSize];
 
                   delete this->Bytes;
-                  delete CurrentBytes;
                   this->Bytes = NewBytes;
                   return *this;
             }
+            // Method, which is pushing back a block.data() and doing block->clear()
+            // For example if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //                block2[b1, b2, b3, ..., bM] | M ∈ ℕ
+            // then block1.push_front(block2) is following
+            // block1[a1, a2, a3, ..., aN, b1, b2, b3, ..., bM] | block1.size() = N + M
+            // block2[]
             template <std::uint64_t BlockSize>
             constexpr Block & push_back(Block<BlockSize> && block) noexcept
             {
@@ -296,14 +423,26 @@ class Block
                   block.clear();
                   return Res;
             }
+            // Method, which is pushing back a dynamic Array | #Array = ArraySize
+            // For example if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //                Array[b1, b2, b3, ..., bM] | M ∈ ℕ, M = ArraySize
+            // then block1.push_front(block2) is following
+            // block1[b1, b2, b3, ..., bM, a1, a2, a3, ..., aN] | block1.size() = N + M
+            // block2[b1, b2, b3, ..., bM]
+
+            // If ArraySize < #Array, then it will cutting Array
+            // else if ArraySize > #Array, then it will considering zeros or rubbish
+            //
+            // If ArraySize is not an integral type, then it will asserted you
             template <typename Type>
-            constexpr Block & push_back(unsigned char * Array, const Type NewSize) noexcept
+            constexpr Block & push_back(unsigned char * Array, const Type ArraySize) noexcept
             {
                   static_assert(std::is_integral_v<Type>,
-                                "In method Block::push_back(unsigned char * Array, const Type NewSize) Type is not an "
+                                "In method Block::push_back(unsigned char * Array, const Type ArraySize) Type is not an "
                                 "integral, however should be");
+
                   const std::uint64_t PreviousSize = this->Length;
-                  this->Length += NewSize;
+                  this->Length += ArraySize;
                   unsigned char * NewBytes = new unsigned char[this->Length];
                   assert((void("Bad allocation in Block::push_front(Type Arg)"), NewBytes != NULL));
 
@@ -311,12 +450,18 @@ class Block
                   for(; Iterator < PreviousSize; ++Iterator)
                         NewBytes[Iterator] = this->Bytes[Iterator];
                   for(; Iterator < this->Length; ++Iterator)
-                        NewBytes[Iterator] = Array[Iterator - NewSize];
+                        NewBytes[Iterator] = Array[Iterator - ArraySize];
+
                   delete this->Bytes;
                   this->Bytes = NewBytes;
-
                   return *this;
             }
+            // Method, which is pushing back a parameter pack
+            // For example if block[a1, a2, a3, ..., aN] | N ∈ ℕ
+            // then block1.push_front(b1, b2, b3, ..., bM) | M ∈ ℕ, M = sizeof...(args) is following
+            // block[b1, b2, b3, ..., bM, a1, a2, a3, ..., aN] | block.size() = N + M
+            //
+            // If ArraySize is not an integral type, then it will asserted you
             template <typename... Args>
             constexpr Block & push_back(Args... args) noexcept
             {
@@ -338,6 +483,18 @@ class Block
                   this->Bytes = NewBytes;
                   return *this;
             }
+            // Method, which is inserting a consiquence of bytes by dynamic Array
+            // For example, if block[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //                 Array[b1, b2, b3, ..., bM] | M ∈ ℕ, M = #Array
+            // then block.insert(k, Array, ArraySize) | k ∈ ℕ, 0 <= k <= N is following
+            // block[a1, a2, a3, ..., ak, b1, b2, b3, ..., bM, ..., aN+M] | block.size() = N + M
+            // Array[b1, b2, b3, ..., bM]
+            //
+            // if Type of k is not an integral, then is will asserted you
+            // if Type of #Array is not an integral, then is will asserted you
+            //
+            // if ArraySize < #Array, then Array will cutted and inserted
+            // if ArraySize > #Array, then inserted array will considering zeros or rubbish
             template <typename Type1, typename Type2>
             constexpr Block & insert(const Type1 Position, unsigned char * Bytes, const Type2 ArraySize) noexcept
             {
@@ -347,6 +504,9 @@ class Block
                   static_assert(std::is_integral_v<Type2>,
                                 "In method Block::insert(const Type2 Position, unsigned char * Bytes, const Type2 Size) Type2 is "
                                 "not an integral, however should be");
+
+                  if(Bytes == NULL or ArraySize == 0)
+                        return *this;
 
                   if(Position <= 0)
                   {
@@ -374,12 +534,24 @@ class Block
                         return *this;
                   }
             }
+            // Method, which is inserting a consiquence of bytes by other block
+            // For example, if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //                 block2[b1, b2, b3, ..., bM] | M ∈ ℕ, M = block2.size()
+            // then block1.insert(k, block2) | k ∈ ℕ, 0 <= k <= N is following
+            // block1[a1, a2, a3, ..., ak, b1, b2, b3, ..., bM, ..., aN+M] | block1.size() = N + M
+            // block2[b1, b2, b3, ..., bM]
+            //
+            // if Type of k is not an integral, then is will asserted you
+            // if Type of #Array is not an integral, then is will asserted you
             template <typename First, std::uint64_t BlockSize>
             constexpr Block & insert(First Position, Block<BlockSize> & block) noexcept
             {
                   static_assert(
                       std::is_integral_v<First>,
                       "In method Block::insert(First Position, Args... args) type First is not an integral, however should be");
+
+                  if(block.data() == NULL or block.size() == 0)
+                        return *this;
 
                   if(Position <= 0)
                   {
@@ -390,12 +562,11 @@ class Block
                         return this->push_back(block);
                   } else [[likely]]
                   {
-                        const std::uint64_t ArraySize    = block.size();
-                        unsigned char *     CurrentBytes = new unsigned char[ArraySize];
-                        std::memcpy(CurrentBytes, block.data(), ArraySize);
-                        std::uint64_t   Iterator      = 0;
-                        std::uint64_t   IteratorBytes = 0;
-                        unsigned char * NewBytes      = new unsigned char[this->Length + ArraySize];
+                        const std::uint64_t ArraySize     = block.size();
+                        unsigned char *     CurrentBytes  = block.data();
+                        std::uint64_t       Iterator      = 0;
+                        std::uint64_t       IteratorBytes = 0;
+                        unsigned char *     NewBytes      = new unsigned char[this->Length + ArraySize];
                         assert(((void)"Bad allocation in Block::insert(First Position, Block block)", NewBytes != NULL));
                         this->Length += ArraySize;
 
@@ -411,14 +582,29 @@ class Block
                         return *this;
                   }
             };
+            // Method, which is inserting a consiquence of bytes by other block and invoking block2->clear()
+            // For example, if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //                 block2[b1, b2, b3, ..., bM] | M ∈ ℕ, M = block2.size()
+            // then block1.insert(k, block2) | k ∈ ℕ, 0 <= k <= N is following
+            // block1[a1, a2, a3, ..., ak, b1, b2, b3, ..., bM, ..., aN+M] | block1.size() = N + M
+            // block2[]
+            //
+            // if Type of k is not an integral, then is will asserted you
+            // if Type of #Array is not an integral, then is will asserted you
             template <typename First, std::uint64_t BlockSize>
             constexpr Block & insert(const First Position, Block<BlockSize> && block) noexcept
             {
                   auto & Res = this->insert(Position, block);
                   block.clear();
-
                   return Res;
             }
+            // Method, which is inserting a consiquence of bytes by parameter pack
+            // For example, if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            // then block1.insert(k, b1, b2, b3, ..., bM) | k, M ∈ ℕ, 0 <= k <= N is following
+            // block1[a1, a2, a3, ..., ak, b1, b2, b3, ..., bM, ..., aN+M] | block1.size() = N + M
+            //
+            // if Type of k is not an integral, then is will asserted you
+            // if Type of #Array is not an integral, then is will asserted you
             template <typename First, typename... Args>
             constexpr Block & insert(First first, Args... args) noexcept
             {
@@ -455,7 +641,8 @@ class Block
                         return *this;
                   }
             };
-            // Use this field read-only!
+            // Method, which is returning pointer to block->Bytes
+            // !!!Use this method for read-only. Othersize block.size() may be wrong!!!
             const unsigned char * data(void) noexcept { return this->Bytes; }
 
             Block & operator+= (const Block & Other) noexcept;
