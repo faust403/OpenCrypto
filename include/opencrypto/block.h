@@ -725,7 +725,7 @@ class Block
                   }
             };
             // Method, which is returning pointer to block->Bytes
-            // !!!Use this method for read-only. Othersize block.size() may be wrong!!!
+            // !!!Use this method for read-only. Otherwise block.size() may be wrong!!!
             const unsigned char * data(void) noexcept { return this->Bytes; }
             std::string           bigdec(void) noexcept;
             std::string           bighex(void) noexcept;
