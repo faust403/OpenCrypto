@@ -219,7 +219,9 @@ class Block
             template <std::uint64_t BlockSize>
             constexpr Block & push_front(Block<BlockSize> && block) noexcept
             {
-                  return this->push_front(block);
+                  auto & Res = this->push_front(block);
+                  block.clear();
+                  return Res;
             }
             template <typename Type>
             constexpr Block & push_front(unsigned char * Array, const Type NewSize) noexcept
@@ -289,7 +291,10 @@ class Block
             template <std::uint64_t BlockSize>
             constexpr Block & push_back(Block<BlockSize> && block) noexcept
             {
-                  return this->push_front(block);
+
+                  auto & Res = this->push_front(block);
+                  block.clear();
+                  return Res;
             }
             template <typename Type>
             constexpr Block & push_back(unsigned char * Array, const Type NewSize) noexcept
@@ -409,7 +414,10 @@ class Block
             template <typename First, std::uint64_t BlockSize>
             constexpr Block & insert(const First Position, Block<BlockSize> && block) noexcept
             {
-                  return this->insert(Position, block);
+                  auto & Res = this->insert(Position, block);
+                  block.clear();
+
+                  return Res;
             }
             template <typename First, typename... Args>
             constexpr Block & insert(First first, Args... args) noexcept
