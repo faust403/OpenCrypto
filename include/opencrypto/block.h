@@ -210,6 +210,7 @@ class Block
 
                   delete this->Bytes;
                   this->Bytes = NewBytes;
+                  return *this;
             }
             template <typename... Args>
             constexpr Block & push_back(Args... args)
@@ -230,6 +231,7 @@ class Block
 
                   delete this->Bytes;
                   this->Bytes = NewBytes;
+                  return *this;
             }
             // Use this field read-only!
             const unsigned char * data(void) noexcept { return this->Bytes; }
