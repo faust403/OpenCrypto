@@ -109,10 +109,10 @@ class Block
             }
 
             // Method, which is replacing elements of Block->Bytes from beginning by parameter pack
-            // Before: Block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℤ
-            // Block.fill(b1, b2, b3, ..., bM) | M ∈ ℕ, M <= N
-            // After: Block[b1, b2, b3, ..., bM, aM+1, aM+2, ..., aN] |  Block.size() = N
-            // If #Args > Block.size() or Block.size() == 0 or Block.data() == NULL,
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℤ
+            // block.fill(b1, b2, b3, ..., bM) | M ∈ ℕ, M <= N
+            // After: Block[b1, b2, b3, ..., bM, aM+1, aM+2, ..., aN] | block.size() = N
+            // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
             // then you will get a std::out_of_range exception, otherwise all will work
             template <typename... Args>
             constexpr auto & fill(Args... args)
@@ -133,6 +133,97 @@ class Block
                               this->Bytes[IteratorBytes] = *IteratorArgs;
                               ++IteratorArgs;
                               ++IteratorBytes;
+                        }
+                  }
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by parameter pack in reversed order
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℤ
+            // block.rfill(b1, b2, b3, ..., bM) | M ∈ ℕ, M <= N
+            // After: block[bM, bM-1, bM-2, ..., b1, aM+1, aM+2, ..., aN] | block.size() = N
+            // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <typename... Args>
+            constexpr auto & rfill(Args... args)
+            {
+                  if(sizeof...(args) > Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
+
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
+                  {
+                        throw std::out_of_range("Block is empty(non-valid)");
+                  } else
+                  {
+                        std::array<unsigned char, sizeof...(args)> CurrentBytes = std::array{std::forward<Args>(args)...};
+                        std::reverse(CurrentBytes.begin(), CurrentBytes.end());
+                        typename decltype(CurrentBytes)::iterator IteratorArgs = CurrentBytes.begin();
+
+                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorArgs != CurrentBytes.end();)
+                        {
+                              this->Bytes[IteratorBytes] = *IteratorArgs;
+                              ++IteratorArgs;
+                              ++IteratorBytes;
+                        }
+                  }
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by parameter pack in reversed order
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℤ
+            // block.bfill(b1, b2, b3, ..., bM) | M ∈ ℕ, M <= N
+            // After: block[a1, a2, ..., aN, b1, b2, b3, ..., bM] | block.size() = N
+            // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <typename... Args>
+            constexpr auto & bfill(Args... args)
+            {
+                  if(sizeof...(args) > Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
+
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
+                  {
+                        throw std::out_of_range("Block is empty(non-valid)");
+                  } else
+                  {
+                        std::array<unsigned char, sizeof...(args)> CurrentBytes = std::array{std::forward<Args>(args)...};
+                        std::reverse(CurrentBytes.begin(), CurrentBytes.end());
+                        typename decltype(CurrentBytes)::iterator IteratorArgs = CurrentBytes.begin();
+
+                        for(std::uint64_t IteratorBytes = this->Length - 1;
+                            IteratorBytes >= 0 and IteratorArgs != CurrentBytes.end();)
+                        {
+                              this->Bytes[IteratorBytes] = *IteratorArgs;
+                              ++IteratorArgs;
+                              --IteratorBytes;
+                        }
+                  }
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by parameter pack in reversed order
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℤ
+            // block.brfill(b1, b2, b3, ..., bM) | M ∈ ℕ, M <= N
+            // After: block[a1, a2, ..., aN, bM, bM-1, bM-2, ..., b1] | block.size() = N
+            // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <typename... Args>
+            constexpr auto & brfill(Args... args)
+            {
+                  if(sizeof...(args) > Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
+
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
+                  {
+                        throw std::out_of_range("Block is empty(non-valid)");
+                  } else
+                  {
+                        std::array<unsigned char, sizeof...(args)> CurrentBytes = std::array{std::forward<Args>(args)...};
+                        typename decltype(CurrentBytes)::iterator  IteratorArgs = CurrentBytes.begin();
+
+                        for(std::uint64_t IteratorBytes = this->Length - 1;
+                            IteratorBytes >= 0 and IteratorArgs != CurrentBytes.end();)
+                        {
+                              this->Bytes[IteratorBytes] = *IteratorArgs;
+                              ++IteratorArgs;
+                              --IteratorBytes;
                         }
                   }
                   return *this;
