@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
@@ -20,10 +21,39 @@ class Block
             std::uint64_t   Length = Size;
 
       public:
-            constexpr explicit Block(void) noexcept : Bytes(new unsigned char[Size]) { }
-            constexpr explicit Block(const Block & Other) noexcept { std::memcpy(this->Bytes, Other.data(), this->Length); }
-            constexpr explicit Block(const Block && Other) noexcept : Bytes(std::move(Other.data())) { Other.clear(); }
-            constexpr explicit Block(const unsigned char * NewBytes) { std::memcpy(this->Bytes, NewBytes, this->Length); }
+            template <std::uint64_t NewSize>
+            constexpr explicit Block(Block<NewSize> & Other) noexcept :
+                Length(Other.size()), Bytes(new unsigned char[Other.size()])
+            {
+                  assert((void("Bad allocation in constructor"), this->Bytes != NULL));
+                  std::memcpy(this->Bytes, Other.data(), this->Length);
+            }
+            template <std::uint64_t NewSize>
+            constexpr explicit Block(Block<NewSize> && Other) noexcept :
+                Length(Other.size()), Bytes(new unsigned char[Other.size()])
+            {
+                  std::memcpy(this->Bytes, std::move(Other.data()), this->Length);
+                  Other.clear();
+            }
+            template <typename Type>
+            constexpr explicit Block(Type * NewBytes) noexcept : Bytes(new unsigned char[Size])
+            {
+                  static_assert(std::is_same_v<std::remove_const_t<Type>, unsigned char>,
+                                "The constructor Block:Block(Type * NewBytes) have got Type != unsigned char");
+                  assert((void("Bad allocation in constructor"), this->Bytes != NULL));
+                  std::memcpy(this->Bytes, NewBytes, Size);
+            }
+            template <typename... Args>
+            constexpr explicit Block(Args... args) noexcept : Length(sizeof...(args))
+            {
+                  this->Bytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in constructor"), this->Bytes != NULL));
+                  this->fill(args...);
+            }
+            constexpr explicit Block(void) noexcept : Bytes(new unsigned char[Size])
+            {
+                  assert((void("Bad allocation in constructor"), this->Bytes != NULL));
+            }
             virtual ~Block(void) noexcept { delete this->Bytes; }
 
             template <typename... Args>
@@ -71,8 +101,9 @@ class Block
                   }
 
                   unsigned char * NewBytes = new unsigned char[NewSize];
+                  assert((void("Bad allocation in Block::resize()"), NewBytes != NULL));
 
-                  std::uint64_t Iterator   = 0;
+                  std::uint64_t Iterator = 0;
                   if(NewSize > Length)
                   {
                         for(; Iterator < Length; ++Iterator)
@@ -93,6 +124,8 @@ class Block
             std::string string(std::uint64_t Period = 0, const char * Separator = "", const std::uint64_t NS = 10,
                                int (*Case)(int) noexcept = ::toupper) const
             {
+                  if(this->Bytes == NULL or this->Length == 0)
+                        return "";
                   std::ostringstream Result;
                   std::string        StringResult;
 
@@ -157,6 +190,46 @@ class Block
                   std::string Result = "";
 
                   return Result;
+            }
+            template <typename... Args>
+            constexpr Block & push_front(Args... args)
+            {
+                  this->Length += sizeof...(args);
+                  unsigned char * NewBytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in Block::push_front(Type Arg)"), NewBytes != NULL));
+
+                  std::array<unsigned char, sizeof...(args)> CurrentBytes = std::array{std::forward<Args>(args)...};
+                  typename decltype(CurrentBytes)::iterator  IteratorArgs = CurrentBytes.begin();
+
+                  std::uint64_t           Iterator                        = 0;
+                  constexpr std::uint64_t ArraySize                       = CurrentBytes.size();
+                  for(; Iterator < ArraySize; ++Iterator)
+                        NewBytes[Iterator] = CurrentBytes[Iterator];
+                  for(; Iterator < this->Length; ++Iterator)
+                        NewBytes[Iterator] = this->Bytes[Iterator - ArraySize];
+
+                  delete this->Bytes;
+                  this->Bytes = NewBytes;
+            }
+            template <typename... Args>
+            constexpr Block & push_back(Args... args)
+            {
+                  const std::uint64_t PreviousSize = this->Length;
+                  this->Length += sizeof...(args);
+                  unsigned char * NewBytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in Block::push_front(Type Arg)"), NewBytes != NULL));
+
+                  std::array<unsigned char, sizeof...(args)> CurrentBytes = std::array{std::forward<Args>(args)...};
+                  typename decltype(CurrentBytes)::iterator  IteratorArgs = CurrentBytes.begin();
+
+                  std::uint64_t Iterator                                  = 0;
+                  for(; Iterator < PreviousSize; ++Iterator)
+                        NewBytes[Iterator] = this->Bytes[Iterator];
+                  for(; Iterator < this->Length; ++Iterator)
+                        NewBytes[Iterator] = CurrentBytes[Iterator - PreviousSize];
+
+                  delete this->Bytes;
+                  this->Bytes = NewBytes;
             }
             // Use this field read-only!
             const unsigned char * data(void) noexcept { return this->Bytes; }
