@@ -368,14 +368,6 @@ class Block
                   std::transform(StringResult.begin(), StringResult.end(), StringResult.begin(), Case);
                   return StringResult;
             }
-            // TODO
-            std::string bignum(void) const noexcept
-            {
-                  if(this->Length == 0)
-                        return "0";
-                  else
-                        return "";
-            }
             // Method, which is pushing front a block.data()
             // For example if block1[a1, a2, a3, ..., aN] | N ∈ ℕ
             //                block2[b1, b2, b3, ..., bM] | M ∈ ℕ
@@ -735,88 +727,152 @@ class Block
             // Method, which is returning pointer to block->Bytes
             // !!!Use this method for read-only. Othersize block.size() may be wrong!!!
             const unsigned char * data(void) noexcept { return this->Bytes; }
+            std::string           bigdec(void) noexcept;
+            std::string           bighex(void) noexcept;
+            std::string           bigbin(void) noexcept;
 
             Block & operator+= (const Block & Other) noexcept;
-            Block & operator+= (const Block && Other) noexcept;
-            Block & operator+= (const unsigned char * Other) noexcept;
             Block & operator-= (const Block & Other) noexcept;
-            Block & operator-= (const Block && Other) noexcept;
-            Block & operator-= (const unsigned char * Other) noexcept;
             Block & operator*= (const Block & Other) noexcept;
-            Block & operator*= (const Block && Other) noexcept;
-            Block & operator*= (const unsigned char * Other) noexcept;
             Block & operator/= (const Block & Other) noexcept;
-            Block & operator/= (const Block && Other) noexcept;
-            Block & operator/= (const unsigned char * Other) noexcept;
             Block & operator= (const Block & Other) noexcept;
-            Block & operator= (const Block && Other) noexcept;
-            Block & operator= (const unsigned char * Other) noexcept;
             Block & operator+ (const Block & Other) noexcept;
-            Block & operator+ (const Block && Other) noexcept;
-            Block & operator+ (const unsigned char * Other) noexcept;
             Block & operator- (const Block & Other) noexcept;
-            Block & operator- (const Block && Other) noexcept;
-            Block & operator- (const unsigned char * Other) noexcept;
             Block & operator* (const Block & Other) noexcept;
-            Block & operator* (const Block && Other) noexcept;
-            Block & operator* (const unsigned char * Other) noexcept;
             Block & operator/ (const Block & Other) noexcept;
+
+            Block & operator+= (const Block && Other) noexcept;
+            Block & operator-= (const Block && Other) noexcept;
+            Block & operator*= (const Block && Other) noexcept;
+            Block & operator/= (const Block && Other) noexcept;
+            Block & operator= (const Block && Other) noexcept;
+            Block & operator+ (const Block && Other) noexcept;
+            Block & operator- (const Block && Other) noexcept;
+            Block & operator* (const Block && Other) noexcept;
             Block & operator/ (const Block && Other) noexcept;
+
+            Block & operator+= (const unsigned char * Other) noexcept;
+            Block & operator-= (const unsigned char * Other) noexcept;
+            Block & operator*= (const unsigned char * Other) noexcept;
+            Block & operator/= (const unsigned char * Other) noexcept;
+            Block & operator= (const unsigned char * Other) noexcept;
+            Block & operator+ (const unsigned char * Other) noexcept;
+            Block & operator- (const unsigned char * Other) noexcept;
+            Block & operator* (const unsigned char * Other) noexcept;
             Block & operator/ (const unsigned char * Other) noexcept;
 
-            bool operator== (const Block & Other) noexcept;
-            bool operator== (const Block && Other) noexcept;
-            bool operator== (const unsigned char * Other) noexcept;
-            bool operator!= (const Block & Other) noexcept;
-            bool operator!= (const Block && Other) noexcept;
-            bool operator!= (const unsigned char * Other) noexcept;
+            template <typename Type>
+            Block & operator+= (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator-= (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator*= (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator/= (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator= (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator+ (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator- (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator* (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator/ (const Type Other) noexcept;
+
             bool operator> (const Block & Other) noexcept;
-            bool operator> (const Block && Other) noexcept;
-            bool operator> (const unsigned char * Other) noexcept;
             bool operator>= (const Block & Other) noexcept;
-            bool operator>= (const Block && Other) noexcept;
-            bool operator>= (const unsigned char * Other) noexcept;
             bool operator<(const Block & Other) noexcept;
-            bool operator<(const Block && Other) noexcept;
-            bool operator<(const unsigned char * Other) noexcept;
             bool operator<= (const Block & Other) noexcept;
-            bool operator<= (const Block && Other) noexcept;
-            bool operator<= (const unsigned char * Other) noexcept;
             bool operator&& (const Block & Other) noexcept;
-            bool operator&& (const Block && Other) noexcept;
-            bool operator&& (const unsigned char * Other) noexcept;
             bool operator|| (const Block & Other) noexcept;
+            bool operator== (const Block & Other) noexcept;
+            bool operator!= (const Block & Other) noexcept;
+
+            bool operator> (const Block && Other) noexcept;
+            bool operator>= (const Block && Other) noexcept;
+            bool operator<(const Block && Other) noexcept;
+            bool operator<= (const Block && Other) noexcept;
+            bool operator&& (const Block && Other) noexcept;
             bool operator|| (const Block && Other) noexcept;
+            bool operator== (const Block && Other) noexcept;
+            bool operator!= (const Block && Other) noexcept;
+
+            bool operator> (const unsigned char * Other) noexcept;
+            bool operator>= (const unsigned char * Other) noexcept;
+            bool operator<(const unsigned char * Other) noexcept;
+            bool operator<= (const unsigned char * Other) noexcept;
+            bool operator&& (const unsigned char * Other) noexcept;
             bool operator|| (const unsigned char * Other) noexcept;
+            bool operator== (const unsigned char * Other) noexcept;
+            bool operator!= (const unsigned char * Other) noexcept;
 
-            Block & operator& (const Block & Other) noexcept;
-            Block & operator& (const Block && Other) noexcept;
-            Block & operator& (const unsigned char * Other) noexcept;
-            Block & operator&= (const Block & Other) noexcept;
-            Block & operator&= (const Block && Other) noexcept;
-            Block & operator&= (const unsigned char * Other) noexcept;
+            template <typename Type>
+            bool operator> (const Type Other) noexcept;
+            template <typename Type>
+            bool operator>= (const Type Other) noexcept;
+            template <typename Type>
+            bool operator<(const Type Other) noexcept;
+            template <typename Type>
+            bool operator<= (const Type Other) noexcept;
+            template <typename Type>
+            bool operator&& (const Type Other) noexcept;
+            template <typename Type>
+            bool operator|| (const Type Other) noexcept;
+            template <typename Type>
+            bool operator== (const Type Other) noexcept;
+            template <typename Type>
+            bool operator!= (const Type Other) noexcept;
+
             Block & operator| (const Block & Other) noexcept;
-            Block & operator| (const Block && Other) noexcept;
-            Block & operator| (const unsigned char * Other) noexcept;
             Block & operator|= (const Block & Other) noexcept;
-            Block & operator|= (const Block && Other) noexcept;
-            Block & operator|= (const unsigned char * Other) noexcept;
             Block & operator^ (const Block & Other) noexcept;
-            Block & operator^ (const Block && Other) noexcept;
-            Block & operator^ (const unsigned char * Other) noexcept;
             Block & operator^= (const Block & Other) noexcept;
-            Block & operator^= (const Block && Other) noexcept;
-            Block & operator^= (const unsigned char * Other) noexcept;
+            Block & operator& (const Block & Other) noexcept;
+            Block & operator&= (const Block & Other) noexcept;
 
-            Block & operator>> (const std::uint64_t Shift) noexcept;
-            Block & operator>>= (const std::uint64_t Shift) noexcept;
-            Block & operator<< (const std::uint64_t Shift) noexcept;
-            Block & operator<<= (const std::uint64_t Shift) noexcept;
+            Block & operator| (const Block && Other) noexcept;
+            Block & operator|= (const Block && Other) noexcept;
+            Block & operator^ (const Block && Other) noexcept;
+            Block & operator^= (const Block && Other) noexcept;
+            Block & operator& (const Block && Other) noexcept;
+            Block & operator&= (const Block && Other) noexcept;
+
+            Block & operator| (const unsigned char * Other) noexcept;
+            Block & operator|= (const unsigned char * Other) noexcept;
+            Block & operator^ (const unsigned char * Other) noexcept;
+            Block & operator^= (const unsigned char * Other) noexcept;
+            Block & operator& (const unsigned char * Other) noexcept;
+            Block & operator&= (const unsigned char * Other) noexcept;
+
+            template <typename Type>
+            Block & operator| (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator|= (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator^ (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator^= (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator& (const Type Other) noexcept;
+            template <typename Type>
+            Block & operator&= (const Type Other) noexcept;
+
+            template <typename Type>
+            Block & operator>> (const Type Shift) noexcept;
+            template <typename Type>
+            Block & operator>>= (const Type Shift) noexcept;
+            template <typename Type>
+            Block & operator<< (const Type Shift) noexcept;
+            template <typename Type>
+            Block & operator<<= (const Type Shift) noexcept;
 
             Block &         operator!(void) noexcept;
             Block &         operator~(void) noexcept;
             unsigned char * operator* (void) noexcept;
-            unsigned char & operator[] (const std::uint64_t Index) noexcept;
+
+            template <typename Type>
+            unsigned char & operator[] (const Type Index) noexcept;
 };
 template <std::uint64_t Size = 0>
 class Informative_Block : public Block<Size>
