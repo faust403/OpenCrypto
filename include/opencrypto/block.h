@@ -742,6 +742,12 @@ class Block
             Block & operator-= (const Block & Other) noexcept;
             Block & operator-= (const Block && Other) noexcept;
             Block & operator-= (const unsigned char * Other) noexcept;
+            Block & operator*= (const Block & Other) noexcept;
+            Block & operator*= (const Block && Other) noexcept;
+            Block & operator*= (const unsigned char * Other) noexcept;
+            Block & operator/= (const Block & Other) noexcept;
+            Block & operator/= (const Block && Other) noexcept;
+            Block & operator/= (const unsigned char * Other) noexcept;
             Block & operator= (const Block & Other) noexcept;
             Block & operator= (const Block && Other) noexcept;
             Block & operator= (const unsigned char * Other) noexcept;
@@ -751,6 +757,12 @@ class Block
             Block & operator- (const Block & Other) noexcept;
             Block & operator- (const Block && Other) noexcept;
             Block & operator- (const unsigned char * Other) noexcept;
+            Block & operator* (const Block & Other) noexcept;
+            Block & operator* (const Block && Other) noexcept;
+            Block & operator* (const unsigned char * Other) noexcept;
+            Block & operator/ (const Block & Other) noexcept;
+            Block & operator/ (const Block && Other) noexcept;
+            Block & operator/ (const unsigned char * Other) noexcept;
 
             bool operator== (const Block & Other) noexcept;
             bool operator== (const Block && Other) noexcept;
