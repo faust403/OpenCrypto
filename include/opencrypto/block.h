@@ -5,6 +5,7 @@
 #include <array>
 #include <bitset>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -32,6 +33,7 @@ class Block
             constexpr explicit Block(Block<NewSize> && Other) noexcept :
                 Length(Other.size()), Bytes(new unsigned char[Other.size()])
             {
+                  assert((void("Bad allocation in constructor"), this->Bytes != NULL));
                   std::memcpy(this->Bytes, std::move(Other.data()), this->Length);
                   Other.clear();
             }
@@ -53,6 +55,8 @@ class Block
             constexpr explicit Block(void) noexcept : Bytes(new unsigned char[Size])
             {
                   assert((void("Bad allocation in constructor"), this->Bytes != NULL));
+                  for(std::uint64_t Iterator = 0; Iterator != this->Length; ++Iterator)
+                        this->Bytes[Iterator] = NULL;
             }
             virtual ~Block(void) noexcept { delete this->Bytes; }
 
@@ -187,12 +191,59 @@ class Block
             // TODO
             std::string bignum(void) const noexcept
             {
-                  std::string Result = "";
+                  if(this->Length == 0)
+                        return "0";
+                  else
+                        return "";
+            }
+            template <std::uint64_t BlockSize>
+            constexpr Block & push_front(Block<BlockSize> & block) noexcept
+            {
+                  const std::uint64_t PreviousSize = this->Length;
+                  const std::uint64_t NewSize      = block.size();
+                  this->Length += NewSize;
+                  unsigned char *       NewBytes = new unsigned char[this->Length];
+                  const unsigned char * Array    = block.data();
+                  assert((void("Bad allocation in Block::push_front(Type Arg)"), NewBytes != NULL));
 
-                  return Result;
+                  std::uint64_t Iterator = 0;
+                  for(; Iterator < NewSize; ++Iterator)
+                        NewBytes[Iterator] = Array[Iterator];
+                  for(; Iterator < this->Length; ++Iterator)
+                        NewBytes[Iterator] = this->Bytes[Iterator - NewSize];
+
+                  delete this->Bytes;
+                  this->Bytes = NewBytes;
+                  return *this;
+            }
+            template <std::uint64_t BlockSize>
+            constexpr Block & push_front(Block<BlockSize> && block) noexcept
+            {
+                  return this->push_front(block);
+            }
+            template <typename Type>
+            constexpr Block & push_front(unsigned char * Array, const Type NewSize) noexcept
+            {
+                  static_assert(std::is_integral_v<Type>,
+                                "In method Block::push_front(unsigned char * Array, const Type NewSize) Type is not an "
+                                "integral, however should be");
+                  const std::uint64_t PreviousSize = this->Length;
+                  this->Length += NewSize;
+                  unsigned char * NewBytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in Block::push_front(Type Arg)"), NewBytes != NULL));
+
+                  std::uint64_t Iterator = 0;
+                  for(; Iterator < NewSize; ++Iterator)
+                        NewBytes[Iterator] = Array[Iterator];
+                  for(; Iterator < this->Length; ++Iterator)
+                        NewBytes[Iterator] = this->Bytes[Iterator - NewSize];
+
+                  delete this->Bytes;
+                  this->Bytes = NewBytes;
+                  return *this;
             }
             template <typename... Args>
-            constexpr Block & push_front(Args... args)
+            constexpr Block & push_front(Args... args) noexcept
             {
                   this->Length += sizeof...(args);
                   unsigned char * NewBytes = new unsigned char[this->Length];
@@ -212,8 +263,57 @@ class Block
                   this->Bytes = NewBytes;
                   return *this;
             }
+            template <std::uint64_t BlockSize>
+            constexpr Block & push_back(Block<BlockSize> & block) noexcept
+            {
+                  const std::uint64_t PreviousSize = this->Length;
+                  this->Length += block.size();
+                  unsigned char * NewBytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in Block::push_front(Type Arg)"), NewBytes != NULL));
+
+                  const std::uint64_t ArraySize    = block.size();
+                  unsigned char *     CurrentBytes = new unsigned char[ArraySize];
+                  std::memcpy(CurrentBytes, block.data(), ArraySize);
+
+                  std::uint64_t Iterator = 0;
+                  for(; Iterator < PreviousSize; ++Iterator)
+                        NewBytes[Iterator] = this->Bytes[Iterator];
+                  for(; Iterator < this->Length; ++Iterator)
+                        NewBytes[Iterator] = CurrentBytes[Iterator - PreviousSize];
+
+                  delete this->Bytes;
+                  delete CurrentBytes;
+                  this->Bytes = NewBytes;
+                  return *this;
+            }
+            template <std::uint64_t BlockSize>
+            constexpr Block & push_back(Block<BlockSize> && block) noexcept
+            {
+                  return this->push_front(block);
+            }
+            template <typename Type>
+            constexpr Block & push_back(unsigned char * Array, const Type NewSize) noexcept
+            {
+                  static_assert(std::is_integral_v<Type>,
+                                "In method Block::push_back(unsigned char * Array, const Type NewSize) Type is not an "
+                                "integral, however should be");
+                  const std::uint64_t PreviousSize = this->Length;
+                  this->Length += NewSize;
+                  unsigned char * NewBytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in Block::push_front(Type Arg)"), NewBytes != NULL));
+
+                  std::uint64_t Iterator = 0;
+                  for(; Iterator < PreviousSize; ++Iterator)
+                        NewBytes[Iterator] = this->Bytes[Iterator];
+                  for(; Iterator < this->Length; ++Iterator)
+                        NewBytes[Iterator] = Array[Iterator - NewSize];
+                  delete this->Bytes;
+                  this->Bytes = NewBytes;
+
+                  return *this;
+            }
             template <typename... Args>
-            constexpr Block & push_back(Args... args)
+            constexpr Block & push_back(Args... args) noexcept
             {
                   const std::uint64_t PreviousSize = this->Length;
                   this->Length += sizeof...(args);
@@ -233,6 +333,120 @@ class Block
                   this->Bytes = NewBytes;
                   return *this;
             }
+            template <typename Type1, typename Type2>
+            constexpr Block & insert(const Type1 Position, unsigned char * Bytes, const Type2 ArraySize) noexcept
+            {
+                  static_assert(std::is_integral_v<Type1>,
+                                "In method Block::insert(const Type1 Position, unsigned char * Bytes, const Type2 Size) Type1 is "
+                                "not an integral, however should be");
+                  static_assert(std::is_integral_v<Type2>,
+                                "In method Block::insert(const Type2 Position, unsigned char * Bytes, const Type2 Size) Type2 is "
+                                "not an integral, however should be");
+
+                  if(Position <= 0)
+                  {
+                        return this->push_front(Bytes, ArraySize);
+                  } else if(Position >= this->Length)
+                  {
+                        return this->push_back(Bytes, ArraySize);
+                  } else [[likely]]
+                  {
+                        std::uint64_t   Iterator      = 0;
+                        std::uint64_t   IteratorBytes = 0;
+                        unsigned char * NewBytes      = new unsigned char[this->Length + ArraySize];
+                        assert(((void)"Bad allocation in Block::insert(First Position, Block block)", NewBytes != NULL));
+                        this->Length += ArraySize;
+
+                        for(; Iterator < Position; ++Iterator)
+                              NewBytes[Iterator] = this->Bytes[Iterator];
+                        for(; IteratorBytes != ArraySize; ++IteratorBytes)
+                              NewBytes[Iterator++] = Bytes[IteratorBytes];
+                        for(; Iterator < this->Length; ++Iterator)
+                              NewBytes[Iterator] = this->Bytes[Iterator - ArraySize];
+
+                        delete this->Bytes;
+                        this->Bytes = NewBytes;
+                        return *this;
+                  }
+            }
+            template <typename First, std::uint64_t BlockSize>
+            constexpr Block & insert(First Position, Block<BlockSize> & block) noexcept
+            {
+                  static_assert(
+                      std::is_integral_v<First>,
+                      "In method Block::insert(First Position, Args... args) type First is not an integral, however should be");
+
+                  if(Position <= 0)
+                  {
+                        return this->push_front(block);
+
+                  } else if(Position >= this->Length)
+                  {
+                        return this->push_back(block);
+                  } else [[likely]]
+                  {
+                        const std::uint64_t ArraySize    = block.size();
+                        unsigned char *     CurrentBytes = new unsigned char[ArraySize];
+                        std::memcpy(CurrentBytes, block.data(), ArraySize);
+                        std::uint64_t   Iterator      = 0;
+                        std::uint64_t   IteratorBytes = 0;
+                        unsigned char * NewBytes      = new unsigned char[this->Length + ArraySize];
+                        assert(((void)"Bad allocation in Block::insert(First Position, Block block)", NewBytes != NULL));
+                        this->Length += ArraySize;
+
+                        for(; Iterator < Position; ++Iterator)
+                              NewBytes[Iterator] = this->Bytes[Iterator];
+                        for(; IteratorBytes != ArraySize; ++IteratorBytes)
+                              NewBytes[Iterator++] = CurrentBytes[IteratorBytes];
+                        for(; Iterator < this->Length; ++Iterator)
+                              NewBytes[Iterator] = this->Bytes[Iterator - ArraySize];
+
+                        delete this->Bytes;
+                        this->Bytes = NewBytes;
+                        return *this;
+                  }
+            };
+            template <typename First, std::uint64_t BlockSize>
+            constexpr Block & insert(const First Position, Block<BlockSize> && block) noexcept
+            {
+                  return this->insert(Position, block);
+            }
+            template <typename First, typename... Args>
+            constexpr Block & insert(First first, Args... args) noexcept
+            {
+                  static_assert(
+                      std::is_integral_v<First>,
+                      "In method Block::insert(First first, Args... args) type First is not an integral, however should be");
+
+                  if(first <= 0)
+                  {
+                        return this->push_front(args...);
+
+                  } else if(first >= Length)
+                  {
+                        return this->push_back(args...);
+                  } else [[likely]]
+                  {
+                        std::array<unsigned char, sizeof...(args)> CurrentBytes = std::array{std::forward<Args>(args)...};
+                        typename decltype(CurrentBytes)::iterator  IteratorArgs = CurrentBytes.begin();
+                        constexpr std::uint64_t                    ArraySize    = CurrentBytes.size();
+                        std::uint64_t                              Iterator     = 0;
+                        unsigned char *                            NewBytes     = new unsigned char[this->Length + ArraySize];
+                        assert(((void)"Bad allocation in Block::insert(First first, Args... args)", NewBytes != NULL));
+                        this->Length += ArraySize;
+
+                        for(; Iterator < first; ++Iterator)
+                              NewBytes[Iterator] = this->Bytes[Iterator];
+                        for(; IteratorArgs != CurrentBytes.end(); ++IteratorArgs)
+                              NewBytes[Iterator++] = *IteratorArgs;
+                        for(; Iterator < this->Length; ++Iterator)
+                              NewBytes[Iterator] = this->Bytes[Iterator - ArraySize];
+
+                        delete this->Bytes;
+                        this->Bytes = NewBytes;
+                        return *this;
+                  }
+            };
             // Use this field read-only!
             const unsigned char * data(void) noexcept { return this->Bytes; }
 
