@@ -92,17 +92,17 @@ class Block
                                 "In method Block::wrap(unsigned char * Bytes, const Type ArraySize) Type is not an "
                                 "integral, however should be");
 
-                  if(this->Bytes != NULL)
+                  if(this->Bytes != NULL) [[likely]]
                         delete this->Bytes;
                   this->Length = 0;
-                  if(ArraySize < 0)
+                  if(ArraySize < 0) [[unlikely]]
                   {
                         throw std::invalid_argument("ArraySize is less than zero");
                   } else if(ArraySize == 0)
                   {
                         this->Bytes  = NULL;
                         this->Length = ArraySize;
-                  } else
+                  } else [[likely]]
                   {
                         this->Length = ArraySize;
                         this->Bytes  = NewBytes;
@@ -244,9 +244,9 @@ class Block
                       "In method Block::rfill(unsigned char * FillBytes, const Type ArraySize) Type is not an integral, "
                       "however should be");
 
-                  if(ArraySize < 0)
+                  if(ArraySize < 0) [[unlikely]]
                         throw std::invalid_argument("ArraySize < 0");
-                  if(FillBytes == NULL)
+                  if(FillBytes == NULL) [[unlikely]]
                         return *this;
                   if(ArraySize > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
@@ -340,7 +340,7 @@ class Block
                       "In method Block::bfill(unsigned char * FillBytes, const Type ArraySize) Type is not an integral, "
                       "however should be");
 
-                  if(ArraySize < 0)
+                  if(ArraySize < 0) [[unlikely]]
                         throw std::invalid_argument("ArraySize < 0");
                   if(ArraySize > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
@@ -436,7 +436,7 @@ class Block
                       "In method Block::brfill(unsigned char * FillBytes, const Type ArraySize) Type is not an integral, "
                       "however should be");
 
-                  if(FillBytes == NULL)
+                  if(FillBytes == NULL) [[unlikely]]
                         return *this;
                   if(ArraySize > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
@@ -505,7 +505,7 @@ class Block
                                 "In method Block::fill_at(const Type Position, const unsigned char Byte) Type is not an "
                                 "integral, however should be");
 
-                  if(Position < 0 or Position > this->Length - 1)
+                  if(Position < 0 or Position > this->Length - 1) [[unlikely]]
                         throw std::out_of_range("Position is outing the range of bytes");
                   else
                         this->Bytes[Position] = Byte;
@@ -514,7 +514,7 @@ class Block
             }
             // Method, which is replacing range of bytes in block->Bytes at Position to FillBytes
             // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
-            // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
+            // Block.fill_at(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
             // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
             //
             // if Length =< Position < 0 then it will follow std::out_of_range() exception
@@ -524,19 +524,19 @@ class Block
             //
             // if Type of Position or Type of ArrayLength is not an integral, then it will asserted you
             template <typename Type1, typename Type2>
-            constexpr Block & fill_range(const Type1 Position, const unsigned char * FillBytes, const Type2 ArrayLength)
+            constexpr Block & fill_at(const Type1 Position, const unsigned char * FillBytes, const Type2 ArrayLength)
             {
                   static_assert(std::is_integral_v<Type1>,
-                                "In method Block::fill_range(const Type Position, const unsigned char Byte, const Type2 "
+                                "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
                                 "ArrayLength) Type1 is not an integral, however should be");
                   static_assert(std::is_integral_v<Type2>,
-                                "In method Block::fill_range(const Type Position, const unsigned char Byte, const Type2 "
+                                "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
                                 "ArrayLength) Type2 is not an integral, however should be");
 
-                  if(this->Bytes == NULL)
+                  if(this->Bytes == NULL) [[unlikely]]
                         throw std::out_of_range("Block->Bytes = NULL");
 
-                  if(Position < 0 or Position > this->Length - 1 or Position + ArrayLength > this->Length)
+                  if(Position < 0 or Position > this->Length - 1 or Position + ArrayLength > this->Length) [[unlikely]]
                   {
                         throw std::out_of_range(
                             "Position is outing the range of bytes(also may be Position + ArrayLength >= Block->Length)");
@@ -551,17 +551,17 @@ class Block
             }
             // Method, which is replacing range of bytes in block->Bytes at Position to Other->Bytes
             // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
-            // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
+            // Block.fill_at(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
             // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
             //
             // if Length =< Position < 0 then it will follow std::out_of_range() exception
             //
             // if Type of Position or Type of ArrayLength is not an integral, then it will asserted you
             template <typename Type1, std::uint64_t BlockSize>
-            constexpr Block & fill_range(const Type1 Position, Block<BlockSize> & Other)
+            constexpr Block & fill_at(const Type1 Position, Block<BlockSize> & Other)
             {
                   static_assert(std::is_integral_v<Type1>,
-                                "In method Block::fill_range(const Type Position, const unsigned char Byte, const Type2 "
+                                "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
                                 "ArrayLength) Type1 is not an integral, however should be");
 
                   if(this->Bytes == NULL)
@@ -584,41 +584,41 @@ class Block
             }
             // Method, which is replacing range of bytes in block->Bytes at Position to Other with invoking Other->clear()
             // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
-            // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
+            // Block.fill_at(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
             // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
             //
             // if Length =< Position < 0 then it will follow std::out_of_range() exception
             //
             // if Type of Position or Type of ArrayLength is not an integral, then it will asserted you
             template <typename Type1, std::uint64_t BlockSize>
-            constexpr Block & fill_range(const Type1 Position, Block<BlockSize> && Other)
+            constexpr Block & fill_at(const Type1 Position, Block<BlockSize> && Other)
             {
-                  this->fill_range(Position, Other);
+                  this->fill_at(Position, Other);
                   Other.clear();
                   return *this;
             }
             // Method, which is replacing range of bytes in block->Bytes at Position to parameter pack
             // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
-            // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
+            // Block.fill_at(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
             // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
             //
             // if Length =< Position < 0 then it will follow std::out_of_range() exception
             //
             // if Type of Position or Type of ArrayLength is not an integral, then it will asserted you
             template <typename Type1, typename... Args>
-            constexpr Block & fill_range(const Type1 Position, Args... args)
+            constexpr Block & fill_at(const Type1 Position, Args... args)
             {
                   static_assert(std::is_integral_v<Type1>,
                                 "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
                                 "ArrayLength) Type1 is not an integral, however should be");
 
-                  if(this->Bytes == NULL)
+                  if(this->Bytes == NULL) [[unlikely]]
                         throw std::out_of_range("Block->Bytes = NULL");
 
                   std::array<unsigned char, sizeof...(args)> DataBytes         = std::array{std::forward<Args>(args)...};
                   typename decltype(DataBytes)::iterator     DataBytesIterator = DataBytes.begin();
                   const auto                                 OtherSize         = DataBytes.size();
-                  if(Position < 0 or Position > this->Length - 1 or Position + OtherSize > this->Length)
+                  if(Position < 0 or Position > this->Length - 1 or Position + OtherSize > this->Length) [[unlikely]]
                   {
                         throw std::out_of_range(
                             "Position is outing the range of bytes(also may be Position + ArrayLength >= Block->Length)");
@@ -653,17 +653,17 @@ class Block
                       std::is_integral_v<Type2>,
                       "In method Block::range(const Type1 From, const Type2 To) Type2 is not an integral, however should be");
 
-                  if(this->Bytes == NULL or this->Length == 0 or To - From == 0)
+                  if(this->Bytes == NULL or this->Length == 0 or To - From == 0) [[unlikely]]
                         return NULL;
-                  if(To < From)
+                  if(To < From) [[unlikely]]
                         throw std::invalid_argument("To < From?");
-                  if(To < 0)
+                  if(To < 0) [[unlikely]]
                         throw std::invalid_argument("To < 0");
-                  if(From < 0)
+                  if(From < 0) [[unlikely]]
                         throw std::invalid_argument("From < 0");
-                  if(To > this->Length)
+                  if(To > this->Length) [[unlikely]]
                         To = this->Length;
-                  if(From < 0)
+                  if(From < 0) [[unlikely]]
                         From = 0;
 
                   const std::uint64_t NewSize  = To - From;
@@ -724,9 +724,9 @@ class Block
             {
                   static_assert(std::is_integral_v<Type>, "Type is not an integral, however should be");
 
-                  if(NewSize == this->Length)
+                  if(NewSize == this->Length) [[unlikely]]
                         return *this;
-                  if(NewSize <= 0)
+                  if(NewSize <= 0) [[unlikely]]
                   {
                         this->clear();
                         return *this;
@@ -771,9 +771,9 @@ class Block
             {
                   static_assert(std::is_integral_v<Type>, "Type is not an integral, however should be");
 
-                  if(NewSize == this->Length)
+                  if(NewSize == this->Length) [[unlikely]]
                         return *this;
-                  if(NewSize <= 0)
+                  if(NewSize <= 0) [[unlikely]]
                   {
                         this->clear();
                         return *this;
@@ -1257,15 +1257,100 @@ class Block
                   Other.wrap(CurrentBytesBuffer, CurrentLengthBuffer);
                   return *this;
             }
-            template <typename Type>
-            constexpr Block & erase_at(const Type Position) noexcept;
-            template <typename Type>
-            constexpr Block & remove(const unsigned char Target) noexcept;
-            template <typename Type>
-            constexpr Block & remove_if(const std::function<bool(unsigned char)> Predicate) noexcept;
-            std::string       bigdec(void) noexcept;
-            std::string       bighex(void) noexcept;
-            std::string       bigbin(void) noexcept;
+            // Method, which is erasing a siquence of Bytes from container. For example
+            // Before: Block[a1, a2, a3, ..., ap, ap+1, ap+2, ..., aN] | N, p ∈ ℕ
+            // Block.erase_at(p, k) | k ∈ ℕ, p is a position for erasing and k is how elements lets to be removed
+            // After: Block[a1, a2, a3, ..., ap+k, ..., aN-k]
+            template <typename Type1, typename Type2 = std::uint64_t>
+            constexpr Block & erase_at(Type1 Position, Type2 Counter = 1)
+            {
+                  static_assert(std::is_integral_v<Type1>,
+                                "In method Block::erase_at(const Type1 Position) Type1 is not an integral, however should be");
+                  static_assert(std::is_integral_v<Type2>,
+                                "In method Block::erase_at(const Type2 Position) Type2 is not an integral, however should be");
+
+                  if(Counter < 0) [[unlikely]]
+                        Counter = 1;
+                  if(Counter == 0) [[unlikely]]
+                        return *this;
+                  if(Position < 0) [[unlikely]]
+                        Position = 0;
+                  if(Position > this->Length - 1) [[unlikely]]
+                        Position = this->Length - 1;
+                  if(this->Length - Position - Counter < 0) [[unlikely]]
+                        throw std::out_of_range(
+                            "You can not remove element(-s) in this position because some of them are out of #Block");
+
+                  const std::uint64_t NewSize  = this->Length - Counter;
+                  unsigned char *     NewBytes = new unsigned char[NewSize];
+                  assert((void("Bad allocation in Block::erase_at()"), this->Bytes != NULL));
+
+                  std::uint64_t Iterator = 0;
+                  for(; Iterator < Position; ++Iterator)
+                        NewBytes[Iterator] = this->Bytes[Iterator];
+                  Iterator += Counter;
+                  for(; Iterator < this->Length; ++Iterator)
+                        NewBytes[Iterator - Counter] = this->Bytes[Iterator];
+
+                  delete this->Bytes;
+                  this->Bytes  = NewBytes;
+                  this->Length = NewSize;
+                  return *this;
+            }
+            // Method, which is removing a special bytes from container. For example
+            // Before: Block[a1, a2, a3, ..., ak = p, ak+1 = p, ak+2 = p, ak+t = p, ..., al = p, ..., aN] | N, p, l, t ∈ ℕ
+            // Block.remove(p) | p is a target for removing
+            // After: Block[a1, a2, a3, ..., aN-t-1]
+            constexpr Block & remove(const unsigned char Target) noexcept
+            {
+                  const std::uint64_t LengthCopy = this->Length;
+                  for(std::uint64_t Iterator = 0; Iterator < LengthCopy; ++Iterator)
+                        if(this->Bytes[Iterator] == Target)
+                              --this->Length;
+
+                  unsigned char * NewBytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in Block::remove()"), this->Bytes != NULL));
+
+                  std::uint64_t Iterator = 0, Counter = 0;
+                  for(; Iterator < LengthCopy; ++Iterator)
+                        if(this->Bytes[Iterator] == Target)
+                              ++Counter;
+                        else
+                              NewBytes[Iterator - Counter] = this->Bytes[Iterator];
+
+                  delete this->Bytes;
+                  this->Bytes = NewBytes;
+                  return *this;
+            }
+            // Method, which is removing a special bytes from container by predicate. For example
+            // Before: Block[f(a1) = true, f(a2) = true, f(a3) = false, ..., f(aN) = false] | N ∈ ℕ
+            // Block.remove(f) | f is a predicate
+            // After: Block[a3, ..., aM] | M ∈ ℕ, M = N - #{e: f(e) = true, e ∈ Block}
+            template <typename LmbdPredicate>
+            constexpr Block & remove_if(const LmbdPredicate Predicate) noexcept
+            {
+                  const std::uint64_t LengthCopy = this->Length;
+                  for(std::uint64_t Iterator = 0; Iterator < LengthCopy; ++Iterator)
+                        if(Predicate(this->Bytes[Iterator]))
+                              --this->Length;
+
+                  unsigned char * NewBytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in Block::remove()"), this->Bytes != NULL));
+
+                  std::uint64_t Iterator = 0, Counter = 0;
+                  for(; Iterator < LengthCopy; ++Iterator)
+                        if(Predicate(this->Bytes[Iterator]))
+                              ++Counter;
+                        else
+                              NewBytes[Iterator - Counter] = this->Bytes[Iterator];
+
+                  delete this->Bytes;
+                  this->Bytes = NewBytes;
+                  return *this;
+            }
+            std::string bigdec(void) noexcept;
+            std::string bighex(void) noexcept;
+            std::string bigbin(void) noexcept;
 
             Block & operator+= (const Block & Other) noexcept;
             Block & operator-= (const Block & Other) noexcept;
