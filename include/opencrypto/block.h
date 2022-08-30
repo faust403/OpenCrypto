@@ -231,6 +231,67 @@ class Block
                   }
                   return *this;
             }
+            // Method, which is replacing elements of Block->Bytes from beginning by Array in reversed order
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block.rfill(Array[b1, b2, b3, ..., bM], #Array) | M ∈ ℕ, M <= N, #Array = M
+            // After: block[bM, bM-1, bM-2, ..., b1, aM+1, aM+2, ..., aN] | block.size() = N
+            // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <typename Type>
+            constexpr Block & rfill(unsigned char * FillBytes, const Type ArraySize)
+            {
+                  static_assert(std::is_integral_v<Type>,
+                                "In method Block::fill(unsigned char * FillBytes, const Type ArraySize) Type is not an integral, "
+                                "however should be");
+
+                  if(FillBytes == NULL)
+                        return *this;
+                  if(ArraySize > this->Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
+
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
+                        throw std::out_of_range("Block is empty(non-valid)");
+                  else
+                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
+                            ++IteratorBytes)
+                              this->Bytes[IteratorBytes] = FillBytes[ArraySize - IteratorBytes - 1];
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block.rfill(Array[b1, b2, b3, ..., bM], #Array) | M ∈ ℕ, M <= N, #Array = M
+            // After: block[bM, bM-1, bM-2, ..., b1, aM+1, aM+2, ..., aN] | block.size() = N
+            // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <std::uint64_t BlockSize>
+            constexpr Block & rfill(Block<BlockSize> & Other)
+            {
+                  const auto      ArraySize = Other.size();
+                  unsigned char * FillBytes = Other.data();
+                  if(ArraySize > this->Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
+
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
+                        throw std::out_of_range("Block is empty(non-valid)");
+                  else
+                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
+                            ++IteratorBytes)
+                              this->Bytes[IteratorBytes] = FillBytes[IteratorBytes - IteratorBytes - 1];
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order with invoking
+            // Other->clear()
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ block.rfill(Array[b1, b2, b3, ..., bM], #Array) |
+            // M ∈ ℕ, M <= N, #Array = M After: block[bM, bM-1, bM-2, ..., b1, aM+1, aM+2, ..., aN] | block.size() = N If #Args >
+            // block.size() or block.size() == 0 or block.data() == NULL, then you will get a std::out_of_range exception,
+            // otherwise all will work
+            template <std::uint64_t BlockSize>
+            constexpr Block & rfill(Block<BlockSize> && Other)
+            {
+                  this->rfill(Other);
+                  Other.clear();
+                  return *this;
+            }
             // Method, which is replacing elements of Block->Bytes from beginning by parameter pack in reversed order
             // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
             // block.bfill(b1, b2, b3, ..., bM) | M ∈ ℕ, M <= N
