@@ -421,9 +421,14 @@ class Block
             // otherwise will decimal
             //
             // Case is following an Uppercase or Lowercase symbols. You can choose them by ::toupper or ::tolower from STL
-            std::string string(std::uint64_t Period = 0, const char * Separator = "", const std::uint64_t NS = 10,
+            template <typename Type>
+            std::string string(std::uint64_t Period = 0, const char * Separator = "", const Type NS = 10,
                                int (*Case)(int) noexcept = ::toupper) const
             {
+                  static_assert(
+                      std::is_integral_v<Type>,
+                      "In method Block::string(..., const Type NS = 10, ...) Type is not an integral, however should be");
+
                   if(this->Bytes == NULL or this->Length == 0)
                         return "";
                   std::ostringstream Result;
