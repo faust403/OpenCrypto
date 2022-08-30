@@ -72,6 +72,8 @@ class Block
                   for(std::uint64_t Iterator = 0; Iterator < this->Length; ++Iterator)
                         this->Bytes[Iterator] = 0;
             }
+            // Number constructor. If you wrote Block<N> block(n); | then
+            // block.size() = 8 | N ∈ ℕ
             constexpr explicit Block(const std::uint64_t Number) noexcept
             {
                   this->Bytes = new unsigned char[8];
