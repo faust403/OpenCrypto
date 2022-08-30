@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -19,7 +20,7 @@
 template <std::uint64_t Size = 0>
 class Block
 {
-      private:
+      protected:
             unsigned char * Bytes  = NULL;
             std::uint64_t   Length = Size;
 
@@ -91,7 +92,8 @@ class Block
                                 "In method Block::wrap(unsigned char * Bytes, const Type ArraySize) Type is not an "
                                 "integral, however should be");
 
-                  delete this->Bytes;
+                  if(this->Bytes != NULL)
+                        delete this->Bytes;
                   this->Length = 0;
                   if(ArraySize < 0)
                   {
@@ -106,11 +108,10 @@ class Block
                         this->Bytes  = NewBytes;
                   }
             }
-
             // Method, which is replacing elements of Block->Bytes from beginning by parameter pack
             // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
             // block.fill(b1, b2, b3, ..., bM) | M ∈ ℕ, M <= N
-            // After: Block[b1, b2, b3, ..., bM, aM+1, aM+2, ..., aN] | block.size() = N
+            // After: block[b1, b2, b3, ..., bM, aM+1, aM+2, ..., aN] | block.size() = N
             // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
             // then you will get a std::out_of_range exception, otherwise all will work
             template <typename... Args>
@@ -134,6 +135,70 @@ class Block
                               ++IteratorBytes;
                         }
                   }
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by Array of Bytes
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block.fill(Array[b1, b2, b3, ..., bM], #Array) | M, k ∈ ℕ, M <= N, #Array = M
+            // After: block[b1, b2, b3, ..., bM, aM+1, aM+2, ..., aN] | block.size() = N
+            // If #Array > block.size() or block.size() == 0 or block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <typename Type>
+            constexpr Block & fill(unsigned char * FillBytes, const Type ArraySize)
+            {
+                  static_assert(std::is_integral_v<Type>,
+                                "In method Block::fill(unsigned char * FillBytes, const Type ArraySize) Type is not an integral, "
+                                "however should be");
+
+                  if(FillBytes == NULL) [[unlikely]]
+                        return *this;
+                  if(ArraySize > this->Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
+
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
+                        throw std::out_of_range("Block is empty(non-valid)");
+                  else
+                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
+                            ++IteratorBytes)
+                              this->Bytes[IteratorBytes] = FillBytes[IteratorBytes];
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by other Block
+            // Before: block1[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block.fill(block2[b1, b2, b3, ..., bM]) | M ∈ ℕ, M <= N
+            // After: block1[b1, b2, b3, ..., bM, aM+1, aM+2, ..., aN] | block.size() = N
+            // If #Args > block1.size() or block2.size() == 0 or block2.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <std::uint64_t BlockSize>
+            constexpr Block & fill(Block<BlockSize> & Other)
+            {
+                  const auto      ArraySize = Other.size();
+                  unsigned char * FillBytes = Other.data();
+
+                  if(FillBytes == NULL) [[unlikely]]
+                        return *this;
+                  if(ArraySize > this->Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
+
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
+                        throw std::out_of_range("Block is empty(non-valid)");
+                  else
+                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
+                            ++IteratorBytes)
+                              this->Bytes[IteratorBytes] = FillBytes[IteratorBytes];
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by other Block with invoking Other->clear()
+            // Before: block1[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block.fill(block2[b1, b2, b3, ..., bM]) | M ∈ ℕ, M <= N
+            // After: block1[b1, b2, b3, ..., bM, aM+1, aM+2, ..., aN] | block.size() = N
+            // If #Args > block1.size() or block2.size() == 0 or block2.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <std::uint64_t BlockSize>
+            constexpr Block & fill(Block<BlockSize> && Other)
+            {
+                  this->fill(Other);
+                  Other.clear();
                   return *this;
             }
             // Method, which is replacing elements of Block->Bytes from beginning by parameter pack in reversed order
@@ -973,10 +1038,36 @@ class Block
             };
             // Method, which is returning pointer to block->Bytes
             // !!!Use this method for read-only. Otherwise block.size() may be wrong!!!
-            const unsigned char * data(void) noexcept { return this->Bytes; }
-            std::string           bigdec(void) noexcept;
-            std::string           bighex(void) noexcept;
-            std::string           bigbin(void) noexcept;
+            unsigned char * data(void) noexcept { return this->Bytes; }
+            // Method, which is swaping this->Block[...] with Other[...]
+            // Before: Block1[a1, a2, a3, ..., aN] | N ∈ ℕ
+            //         Block2[b1, b2, b3, ..., bM] | M ∈ ℕ
+            // Block1.swap(Block2);
+            // After: Block1[b1, b2, b3, ..., bM] | #Block1 = M
+            //        Block2[a1, a2, a3, ..., aN] | #Block2 = N
+            template <std::uint64_t BlockSize>
+            constexpr Block & swap(Block<BlockSize> & Other) noexcept
+            {
+                  const std::uint64_t CurrentLengthBuffer      = this->Length;
+                  const std::uint64_t CurrentLengthBufferOther = Other.len();
+                  unsigned char *     CurrentBytesBuffer       = new unsigned char[CurrentLengthBuffer];
+                  unsigned char *     CurrentBytesBufferOther  = new unsigned char[CurrentLengthBufferOther];
+                  std::memcpy(CurrentBytesBuffer, this->Bytes, CurrentLengthBuffer);
+                  std::memcpy(CurrentBytesBufferOther, Other.data(), CurrentLengthBufferOther);
+
+                  this->wrap(CurrentBytesBufferOther, CurrentLengthBufferOther);
+                  Other.wrap(CurrentBytesBuffer, CurrentLengthBuffer);
+                  return *this;
+            }
+            template <typename Type>
+            constexpr Block & erase_at(const Type Position) noexcept;
+            template <typename Type>
+            constexpr Block & remove(const unsigned char Target) noexcept;
+            template <typename Type>
+            constexpr Block & remove_if(const std::function<bool(unsigned char)> Predicate) noexcept;
+            std::string       bigdec(void) noexcept;
+            std::string       bighex(void) noexcept;
+            std::string       bigbin(void) noexcept;
 
             Block & operator+= (const Block & Other) noexcept;
             Block & operator-= (const Block & Other) noexcept;
