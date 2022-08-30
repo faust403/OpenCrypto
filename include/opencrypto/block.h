@@ -72,6 +72,15 @@ class Block
                   for(std::uint64_t Iterator = 0; Iterator < this->Length; ++Iterator)
                         this->Bytes[Iterator] = 0;
             }
+            constexpr explicit Block(const std::uint64_t Number) noexcept
+            {
+                  this->Bytes = new unsigned char[8];
+                  assert((void("Bad allocation in constructor"), this->Bytes != NULL));
+                  this->Length = 8;
+
+                  for(std::uint64_t Iterator = 8; Iterator > 0; --Iterator)
+                        this->Bytes[Iterator - 1] |= (Number >> (8 * (8 - Iterator)));
+            }
             // Simple distructor with deleting the Bytes field
             virtual ~Block(void) noexcept { delete this->Bytes; }
             // Method, which is wrapping your byte sequence without copying
