@@ -227,7 +227,7 @@ class Block
                   }
                   return *this;
             }
-            // Method, which is replacing and element in block->Bytes at Position to Byte
+            // Method, which is replacing element in block->Bytes at Position to Byte
             // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
             // Block.fill_at(p, b1) | p < N, N ∈ ℕ
             // After: Block[a1, a2, a3, ..., ap = b1, ..., aN] | Block.size() = N
@@ -249,7 +249,7 @@ class Block
 
                   return *this;
             }
-            // Method, which is replacing and range of bytes in block->Bytes at Position to FillBytes
+            // Method, which is replacing range of bytes in block->Bytes at Position to FillBytes
             // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
             // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
             // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
@@ -286,7 +286,7 @@ class Block
                   }
                   return *this;
             }
-            // Method, which is replacing and range of bytes in block->Bytes at Position to Other->Bytes
+            // Method, which is replacing range of bytes in block->Bytes at Position to Other->Bytes
             // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
             // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
             // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
@@ -319,7 +319,7 @@ class Block
                   }
                   return *this;
             }
-            // Method, which is replacing and range of bytes in block->Bytes at Position to Other with invoking Other->clear()
+            // Method, which is replacing range of bytes in block->Bytes at Position to Other with invoking Other->clear()
             // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
             // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
             // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
@@ -332,6 +332,40 @@ class Block
             {
                   this->fill_range(Position, Other);
                   Other.clear();
+                  return *this;
+            }
+            // Method, which is replacing range of bytes in block->Bytes at Position to parameter pack
+            // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
+            // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
+            // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
+            //
+            // if Length =< Position < 0 then it will follow std::out_of_range() exception
+            //
+            // if Type of Position or Type of ArrayLength is not an integral, then it will asserted you
+            template <typename Type1, typename... Args>
+            constexpr Block & fill_range(const Type1 Position, Args... args)
+            {
+                  static_assert(std::is_integral_v<Type1>,
+                                "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
+                                "ArrayLength) Type1 is not an integral, however should be");
+
+                  if(this->Bytes == NULL)
+                        throw std::out_of_range("Block->Bytes = NULL");
+
+                  std::array<unsigned char, sizeof...(args)> DataBytes         = std::array{std::forward<Args>(args)...};
+                  typename decltype(DataBytes)::iterator     DataBytesIterator = DataBytes.begin();
+                  const auto                                 OtherSize         = DataBytes.size();
+                  if(Position < 0 or Position > this->Length - 1 or Position + OtherSize > this->Length)
+                  {
+                        throw std::out_of_range(
+                            "Position is outing the range of bytes(also may be Position + ArrayLength >= Block->Length)");
+                  } else
+                  {
+                        typename std::remove_const_t<decltype(Position + OtherSize)> Iterator = 0;
+
+                        for(; Iterator != OtherSize; ++Iterator)
+                              this->Bytes[Position + Iterator] = *DataBytesIterator++;
+                  }
                   return *this;
             }
             // Method, which is returning a range from From to To | From, To ∈ ℕ
