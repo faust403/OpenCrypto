@@ -283,10 +283,11 @@ class Block
             }
             // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order with invoking
             // Other->clear()
-            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ block.rfill(Array[b1, b2, b3, ..., bM], #Array) |
-            // M ∈ ℕ, M <= N, #Array = M After: block[bM, bM-1, bM-2, ..., b1, aM+1, aM+2, ..., aN] | block.size() = N If #Args >
-            // block.size() or block.size() == 0 or block.data() == NULL, then you will get a std::out_of_range exception,
-            // otherwise all will work
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block.rfill(Array[b1, b2, b3, ..., bM], #Array) | M ∈ ℕ, M <= N, #Array = M
+            // After: block[bM, bM-1, bM-2, ..., b1, aM+1, aM+2, ..., aN] | block.size() = N
+            // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
             template <std::uint64_t BlockSize>
             constexpr Block & rfill(Block<BlockSize> && Other)
             {
@@ -379,10 +380,11 @@ class Block
             }
             // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order with invoking
             // Other->clear()
-            // Before: block1[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ block1.bfill(block2[b1, b2, b3, ..., bM],
-            // #block2) | M ∈ ℕ, M <= N, #block2 = M After: block1[a1, a2, ..., aN, b1, b2, b3, ..., bM] | block.size() = N If
-            // #Args > block1.size() or block2.size() == 0 or block2.data() == NULL, then you will get a std::out_of_range
-            // exception, otherwise all will work
+            // Before: block1[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block1.bfill(block2[b1, b2, b3, ..., bM], #block2) | M ∈ ℕ, M <= N, #block2 = M
+            // After: block1[a1, a2, ..., aN, b1, b2, b3, ..., bM] | block.size() = N
+            // If #Args > block1.size() or block2.size() == 0 or block2.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
             template <std::uint64_t BlockSize>
             constexpr Block & bfill(Block<BlockSize> && Other)
             {
@@ -420,6 +422,12 @@ class Block
                   }
                   return *this;
             }
+            // Method, which is replacing elements of Block->Bytes from beginning by Array in reversed order
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block.brfill(Array[b1, b2, b3, ..., bM], #Array) | M ∈ ℕ, M <= N, #Array = M
+            // After: block[a1, a2, ..., aN, bM, bM-1, bM-2, ..., b1] | block.size() = N
+            // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
             template <typename Type>
             constexpr Block & brfill(unsigned char * FillBytes, const Type ArraySize)
             {
@@ -443,6 +451,12 @@ class Block
                   }
                   return *this;
             }
+            // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order
+            // Before: block1[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block1.brfill(block2[b1, b2, b3, ..., bM], #block2) | M ∈ ℕ, M <= N, #block2 = M
+            // After: block1[a1, a2, ..., aN, bM, bM-1, bM-2, ..., b1] | block.size() = N
+            // If #Args > block1.size() or block2.size() == 0 or block2.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
             template <std::uint64_t BlockSize>
             constexpr Block & brfill(Block<BlockSize> & Other)
             {
@@ -462,6 +476,13 @@ class Block
                   }
                   return *this;
             }
+            // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order with invoking
+            // Other->clear()
+            // Before: block1[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block1.brfill(block2[b1, b2, b3, ..., bM], #block2) | M ∈ ℕ, M <= N, #block2 = M
+            // After: block1[a1, a2, ..., aN, bM, bM-1, bM-2, ..., b1] | block1.size() = N
+            // If #Args > block1.size() or block2.size() == 0 or block2.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
             template <std::uint64_t BlockSize>
             constexpr Block & brfill(Block<BlockSize> && Other)
             {
