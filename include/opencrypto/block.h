@@ -1237,6 +1237,16 @@ class Block
             // Method, which is returning pointer to block->Bytes
             // !!!Use this method for read-only. Otherwise block.size() may be wrong!!!
             const unsigned char * data(void) noexcept { return this->Bytes; }
+            // Method, which is setting up all bytes to Number
+            // Before: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
+            // Block.set1(k) | k ∈ S, inf(S) = 2^8 - 1, sup(S) = 0
+            // After: Block[k, k, k, ..., k] | #Block = N
+            constexpr Block & set1(const unsigned char Number) noexcept
+            {
+                  for(std::uint64_t Iterator = 0; Iterator < this->Length; ++Iterator)
+                        this->Bytes[Iterator] = Number;
+                  return *this;
+            }
             // Method, which is swaping this->Block[...] with Other[...]
             // Before: Block1[a1, a2, a3, ..., aN] | N ∈ ℕ
             //         Block2[b1, b2, b3, ..., bM] | M ∈ ℕ
@@ -1261,6 +1271,13 @@ class Block
             // Before: Block[a1, a2, a3, ..., ap, ap+1, ap+2, ..., aN] | N, p ∈ ℕ
             // Block.erase_at(p, k) | k ∈ ℕ, p is a position for erasing and k is how elements lets to be removed
             // After: Block[a1, a2, a3, ..., ap+k, ..., aN-k]
+            template <typename InvokablePredicate>
+            constexpr Block & for_each(const InvokablePredicate Predicate) noexcept
+            {
+                  for(std::uint64_t Iterator = 0; Iterator < this->Length; ++Iterator)
+                        this->Bytes[Iterator] = Predicate(this->Bytes[Iterator]);
+                  return *this;
+            }
             template <typename Type1, typename Type2 = std::uint64_t>
             constexpr Block & erase_at(Type1 Position, Type2 Counter = 1)
             {
@@ -1326,8 +1343,8 @@ class Block
             // Before: Block[f(a1) = true, f(a2) = true, f(a3) = false, ..., f(aN) = false] | N ∈ ℕ
             // Block.remove(f) | f is a predicate
             // After: Block[a3, ..., aM] | M ∈ ℕ, M = N - #{e: f(e) = true, e ∈ Block}
-            template <typename LmbdPredicate>
-            constexpr Block & remove_if(const LmbdPredicate Predicate) noexcept
+            template <typename InvokablePredicate>
+            constexpr Block & remove_if(const InvokablePredicate Predicate) noexcept
             {
                   const std::uint64_t LengthCopy = this->Length;
                   for(std::uint64_t Iterator = 0; Iterator < LengthCopy; ++Iterator)
