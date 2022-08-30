@@ -179,13 +179,12 @@ class Block
                         return *this;
                   if(ArraySize > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
-
                   if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
                         throw std::out_of_range("Block is empty(non-valid)");
-                  else
-                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
-                            ++IteratorBytes)
-                              this->Bytes[IteratorBytes] = FillBytes[IteratorBytes];
+
+                  for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
+                      ++IteratorBytes)
+                        this->Bytes[IteratorBytes] = FillBytes[IteratorBytes];
                   return *this;
             }
             // Method, which is replacing elements of Block->Bytes from beginning by other Block with invoking Other->clear()
@@ -240,21 +239,23 @@ class Block
             template <typename Type>
             constexpr Block & rfill(unsigned char * FillBytes, const Type ArraySize)
             {
-                  static_assert(std::is_integral_v<Type>,
-                                "In method Block::fill(unsigned char * FillBytes, const Type ArraySize) Type is not an integral, "
-                                "however should be");
+                  static_assert(
+                      std::is_integral_v<Type>,
+                      "In method Block::rfill(unsigned char * FillBytes, const Type ArraySize) Type is not an integral, "
+                      "however should be");
 
+                  if(ArraySize < 0)
+                        throw std::invalid_argument("ArraySize < 0");
                   if(FillBytes == NULL)
                         return *this;
                   if(ArraySize > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
-
                   if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
                         throw std::out_of_range("Block is empty(non-valid)");
-                  else
-                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
-                            ++IteratorBytes)
-                              this->Bytes[IteratorBytes] = FillBytes[ArraySize - IteratorBytes - 1];
+
+                  for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
+                      ++IteratorBytes)
+                        this->Bytes[IteratorBytes] = FillBytes[ArraySize - IteratorBytes - 1];
                   return *this;
             }
             // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order
@@ -270,13 +271,14 @@ class Block
                   unsigned char * FillBytes = Other.data();
                   if(ArraySize > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
-
+                  if(FillBytes == NULL) [[unlikely]]
+                        return *this;
                   if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
                         throw std::out_of_range("Block is empty(non-valid)");
-                  else
-                        for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
-                            ++IteratorBytes)
-                              this->Bytes[IteratorBytes] = FillBytes[IteratorBytes - IteratorBytes - 1];
+
+                  for(std::uint64_t IteratorBytes = 0; IteratorBytes < this->Length and IteratorBytes < ArraySize;
+                      ++IteratorBytes)
+                        this->Bytes[IteratorBytes] = FillBytes[IteratorBytes - IteratorBytes - 1];
                   return *this;
             }
             // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order with invoking
@@ -292,7 +294,7 @@ class Block
                   Other.clear();
                   return *this;
             }
-            // Method, which is replacing elements of Block->Bytes from beginning by parameter pack in reversed order
+            // Method, which is replacing elements of Block->Bytes from beginning by parameter pack in
             // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
             // block.bfill(b1, b2, b3, ..., bM) | M ∈ ℕ, M <= N
             // After: block[a1, a2, ..., aN, b1, b2, b3, ..., bM] | block.size() = N
@@ -314,13 +316,78 @@ class Block
                         typename decltype(CurrentBytes)::iterator IteratorArgs = CurrentBytes.begin();
 
                         for(std::uint64_t IteratorBytes = this->Length - 1;
-                            IteratorBytes >= 0 and IteratorArgs != CurrentBytes.end();)
+                            IteratorBytes > 0 and IteratorArgs != CurrentBytes.end();)
                         {
                               this->Bytes[IteratorBytes] = *IteratorArgs;
                               ++IteratorArgs;
                               --IteratorBytes;
                         }
                   }
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by Array in reversed order
+            // Before: block[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block.bfill(Array[b1, b2, b3, ..., bM], #Array) | M ∈ ℕ, M <= N, #Array = M
+            // After: block[a1, a2, ..., aN, b1, b2, b3, ..., bM] | block.size() = N
+            // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <typename Type = std::uint64_t>
+            constexpr Block & bfill(unsigned char * FillBytes, Type ArraySize)
+            {
+                  static_assert(
+                      std::is_integral_v<Type>,
+                      "In method Block::bfill(unsigned char * FillBytes, const Type ArraySize) Type is not an integral, "
+                      "however should be");
+
+                  if(ArraySize < 0)
+                        throw std::invalid_argument("ArraySize < 0");
+                  if(ArraySize > this->Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
+                  if(FillBytes == NULL) [[unlikely]]
+                        return *this;
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
+                        throw std::out_of_range("Block is empty(non-valid)");
+
+                  const std::uint64_t Limit = this->Length - 1 - ArraySize;
+                  for(std::uint64_t IteratorBytes = this->Length - 1; IteratorBytes > Limit; --IteratorBytes)
+                        this->Bytes[IteratorBytes] = FillBytes[this->Length - 1 - IteratorBytes];
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order
+            // Before: block1[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ
+            // block1.bfill(block2[b1, b2, b3, ..., bM], #block2) | M ∈ ℕ, M <= N, #block2 = M
+            // After: block1[a1, a2, ..., aN, b1, b2, b3, ..., bM] | block.size() = N
+            // If #Args > block1.size() or block2.size() == 0 or block2.data() == NULL,
+            // then you will get a std::out_of_range exception, otherwise all will work
+            template <std::uint64_t BlockSize>
+            constexpr Block & bfill(Block<BlockSize> & Other)
+            {
+                  const auto            ArraySize = Other.size();
+                  const unsigned char * FillBytes = Other.data();
+
+                  if(BlockSize > this->Length) [[unlikely]]
+                        throw std::out_of_range("Args.size() > Length");
+                  if(FillBytes == NULL) [[unlikely]]
+                        return *this;
+                  if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
+                        throw std::out_of_range("Block is empty(non-valid)");
+
+                  const std::uint64_t Limit = this->Length - 1 - ArraySize;
+                  for(std::uint64_t IteratorBytes = this->Length - 1; IteratorBytes > Limit; --IteratorBytes)
+                        this->Bytes[IteratorBytes] = FillBytes[this->Length - 1 - IteratorBytes];
+                  return *this;
+            }
+            // Method, which is replacing elements of Block->Bytes from beginning by Other block in reversed order with invoking
+            // Other->clear()
+            // Before: block1[a1, a2, a3, a4, a5, ..., aN] | N ∈ ℕ block1.bfill(block2[b1, b2, b3, ..., bM],
+            // #block2) | M ∈ ℕ, M <= N, #block2 = M After: block1[a1, a2, ..., aN, b1, b2, b3, ..., bM] | block.size() = N If
+            // #Args > block1.size() or block2.size() == 0 or block2.data() == NULL, then you will get a std::out_of_range
+            // exception, otherwise all will work
+            template <std::uint64_t BlockSize>
+            constexpr Block & bfill(Block<BlockSize> && Other)
+            {
+                  this->bfill(Other);
+                  Other.clear();
                   return *this;
             }
             // Method, which is replacing elements of Block->Bytes from beginning by parameter pack in reversed order
@@ -390,10 +457,10 @@ class Block
             constexpr Block & fill_range(const Type1 Position, const unsigned char * FillBytes, const Type2 ArrayLength)
             {
                   static_assert(std::is_integral_v<Type1>,
-                                "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
+                                "In method Block::fill_range(const Type Position, const unsigned char Byte, const Type2 "
                                 "ArrayLength) Type1 is not an integral, however should be");
                   static_assert(std::is_integral_v<Type2>,
-                                "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
+                                "In method Block::fill_range(const Type Position, const unsigned char Byte, const Type2 "
                                 "ArrayLength) Type2 is not an integral, however should be");
 
                   if(this->Bytes == NULL)
@@ -424,7 +491,7 @@ class Block
             constexpr Block & fill_range(const Type1 Position, Block<BlockSize> & Other)
             {
                   static_assert(std::is_integral_v<Type1>,
-                                "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
+                                "In method Block::fill_range(const Type Position, const unsigned char Byte, const Type2 "
                                 "ArrayLength) Type1 is not an integral, however should be");
 
                   if(this->Bytes == NULL)
@@ -1099,7 +1166,7 @@ class Block
             };
             // Method, which is returning pointer to block->Bytes
             // !!!Use this method for read-only. Otherwise block.size() may be wrong!!!
-            unsigned char * data(void) noexcept { return this->Bytes; }
+            const unsigned char * data(void) noexcept { return this->Bytes; }
             // Method, which is swaping this->Block[...] with Other[...]
             // Before: Block1[a1, a2, a3, ..., aN] | N ∈ ℕ
             //         Block2[b1, b2, b3, ..., bM] | M ∈ ℕ
@@ -1291,7 +1358,7 @@ class Informative_Block : public Block<Size>
             ~Informative_Block(void) noexcept                   = default;
 };
 template <std::uint64_t Size = 0>
-class VBlock
+class VBlock : public Block<Size>
 {
       private:
             unsigned char * Bytes;
