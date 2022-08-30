@@ -114,7 +114,7 @@ class Block
             template <typename... Args>
             constexpr auto & fill(Args... args)
             {
-                  if(sizeof...(args) > Length) [[unlikely]]
+                  if(sizeof...(args) > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
 
                   if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
@@ -143,7 +143,7 @@ class Block
             template <typename... Args>
             constexpr auto & rfill(Args... args)
             {
-                  if(sizeof...(args) > Length) [[unlikely]]
+                  if(sizeof...(args) > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
 
                   if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
@@ -173,7 +173,7 @@ class Block
             template <typename... Args>
             constexpr auto & bfill(Args... args)
             {
-                  if(sizeof...(args) > Length) [[unlikely]]
+                  if(sizeof...(args) > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
 
                   if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
@@ -204,7 +204,7 @@ class Block
             template <typename... Args>
             constexpr auto & brfill(Args... args)
             {
-                  if(sizeof...(args) > Length) [[unlikely]]
+                  if(sizeof...(args) > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
 
                   if(this->Bytes == NULL or this->Length == 0) [[unlikely]]
@@ -285,7 +285,7 @@ class Block
                   return *this;
             }
             // Method, which is removing a leading zeros
-            // Before: Block[a1 = 0, a2 = 0, a3 = 0, ..., ak != 0, ak+1 != 0, ak+2 != 0, ..., af = 0, ..., aN] | N, k ∈ ℕ
+            // Before: Block[a1 = 0, a2 = 0, a3 = 0, ..., ak != 0, ak+1 != 0, ak+2 != 0, ..., af = 0, ..., aN] | N, k, f ∈ ℕ
             // Block.shrink_to_fit()
             // After: Block[ak, ak+1, ak+2, ..., af = 0, ..., aN]
             constexpr Block & shrink_to_fit(void) noexcept
@@ -617,7 +617,6 @@ class Block
             template <std::uint64_t BlockSize>
             constexpr Block & push_back(Block<BlockSize> && block) noexcept
             {
-
                   auto & Res = this->push_front(block);
                   block.clear();
                   return Res;
@@ -815,7 +814,7 @@ class Block
                   {
                         return this->push_front(args...);
 
-                  } else if(first >= Length)
+                  } else if(first >= this->Length)
                   {
                         return this->push_back(args...);
                   } else [[likely]]
