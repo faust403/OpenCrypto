@@ -91,6 +91,8 @@ class Block
                                 "In method Block::wrap(unsigned char * Bytes, const Type ArraySize) Type is not an "
                                 "integral, however should be");
 
+                  delete this->Bytes;
+                  this->Length = 0;
                   if(ArraySize < 0)
                   {
                         throw std::invalid_argument("ArraySize is less than zero");
@@ -112,7 +114,7 @@ class Block
             // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
             // then you will get a std::out_of_range exception, otherwise all will work
             template <typename... Args>
-            constexpr auto & fill(Args... args)
+            constexpr Block & fill(Args... args)
             {
                   if(sizeof...(args) > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
@@ -141,7 +143,7 @@ class Block
             // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
             // then you will get a std::out_of_range exception, otherwise all will work
             template <typename... Args>
-            constexpr auto & rfill(Args... args)
+            constexpr Block & rfill(Args... args)
             {
                   if(sizeof...(args) > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
@@ -171,7 +173,7 @@ class Block
             // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
             // then you will get a std::out_of_range exception, otherwise all will work
             template <typename... Args>
-            constexpr auto & bfill(Args... args)
+            constexpr Block & bfill(Args... args)
             {
                   if(sizeof...(args) > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
@@ -202,7 +204,7 @@ class Block
             // If #Args > block.size() or block.size() == 0 or block.data() == NULL,
             // then you will get a std::out_of_range exception, otherwise all will work
             template <typename... Args>
-            constexpr auto & brfill(Args... args)
+            constexpr Block & brfill(Args... args)
             {
                   if(sizeof...(args) > this->Length) [[unlikely]]
                         throw std::out_of_range("Args.size() > Length");
@@ -234,7 +236,7 @@ class Block
             //
             // if Type of Position is not an integral, then it will asserted you
             template <typename Type>
-            constexpr auto & fill_at(const Type Position, const unsigned char Byte)
+            constexpr Block & fill_at(const Type Position, const unsigned char Byte)
             {
                   static_assert(std::is_integral_v<Type>,
                                 "In method Block::fill_at(const Type Position, const unsigned char Byte) Type is not an "
@@ -249,7 +251,7 @@ class Block
             }
             // Method, which is replacing and range of bytes in block->Bytes at Position to FillBytes
             // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
-            // Block.fill_at(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
+            // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
             // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
             //
             // if Length =< Position < 0 then it will follow std::out_of_range() exception
@@ -259,7 +261,7 @@ class Block
             //
             // if Type of Position or Type of ArrayLength is not an integral, then it will asserted you
             template <typename Type1, typename Type2>
-            constexpr auto & fill_range(Type1 Position, const unsigned char * FillBytes, const Type2 ArrayLength)
+            constexpr Block & fill_range(const Type1 Position, const unsigned char * FillBytes, const Type2 ArrayLength)
             {
                   static_assert(std::is_integral_v<Type1>,
                                 "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
@@ -283,6 +285,97 @@ class Block
                               this->Bytes[Position + Iterator] = FillBytes[Iterator];
                   }
                   return *this;
+            }
+            // Method, which is replacing and range of bytes in block->Bytes at Position to Other->Bytes
+            // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
+            // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
+            // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
+            //
+            // if Length =< Position < 0 then it will follow std::out_of_range() exception
+            //
+            // if Type of Position or Type of ArrayLength is not an integral, then it will asserted you
+            template <typename Type1, std::uint64_t BlockSize>
+            constexpr Block & fill_range(const Type1 Position, Block<BlockSize> & Other)
+            {
+                  static_assert(std::is_integral_v<Type1>,
+                                "In method Block::fill_at(const Type Position, const unsigned char Byte, const Type2 "
+                                "ArrayLength) Type1 is not an integral, however should be");
+
+                  if(this->Bytes == NULL)
+                        throw std::out_of_range("Block->Bytes = NULL");
+
+                  const auto            OtherSize = Other.size();
+                  const unsigned char * DataBytes = Other.data();
+                  if(Position < 0 or Position > this->Length - 1 or Position + OtherSize > this->Length)
+                  {
+                        throw std::out_of_range(
+                            "Position is outing the range of bytes(also may be Position + ArrayLength >= Block->Length)");
+                  } else
+                  {
+                        typename std::remove_const_t<decltype(Position + OtherSize)> Iterator = 0;
+
+                        for(; Iterator != OtherSize; ++Iterator)
+                              this->Bytes[Position + Iterator] = DataBytes[Iterator];
+                  }
+                  return *this;
+            }
+            // Method, which is replacing and range of bytes in block->Bytes at Position to Other with invoking Other->clear()
+            // Was: Block[a1, a2, a3, ..., aN] | N ∈ ℕ
+            // Block.fill_range(p, Bytes[b1, b2, b3, ..., bM], M) | p < N, (M, p ∈ ℕ)
+            // After: Block[a1, a2, a3, ..., ap = b1, ap+1 = b2, ap+2 = b3, ..., ap+M = bM, ..., aN] | Block.size() = N
+            //
+            // if Length =< Position < 0 then it will follow std::out_of_range() exception
+            //
+            // if Type of Position or Type of ArrayLength is not an integral, then it will asserted you
+            template <typename Type1, std::uint64_t BlockSize>
+            constexpr Block & fill_range(const Type1 Position, Block<BlockSize> && Other)
+            {
+                  this->fill_range(Position, Other);
+                  Other.clear();
+                  return *this;
+            }
+            // Method, which is returning a range from From to To | From, To ∈ ℕ
+            // (otherwise it will throw and exception std::invalid_argument)
+            // Block[a1, a2, a3, ..., aN] | N ∈ ℕ
+            // Block.range(From, To) -> Result[aFrom, aTo)
+            //
+            // if From < 0, then From = 0
+            // if To > #Block, then To = #Block
+            //
+            // if To < From, then it throwing std::invalid_argument
+            //
+            // Be carefull. When you want to interpret(-read)(-processing) bytes from Result, then cast them to integral or char
+            // type
+            template <typename Type1, typename Type2>
+            constexpr unsigned char * range(Type1 From, Type2 To) const
+            {
+                  static_assert(
+                      std::is_integral_v<Type1>,
+                      "In method Block::range(const Type1 From, const Type2 To) Type1 is not an integral, however should be");
+                  static_assert(
+                      std::is_integral_v<Type2>,
+                      "In method Block::range(const Type1 From, const Type2 To) Type2 is not an integral, however should be");
+
+                  if(this->Bytes == NULL or this->Length == 0 or To - From == 0)
+                        return NULL;
+                  if(To < From)
+                        throw std::invalid_argument("To < From?");
+                  if(To < 0)
+                        throw std::invalid_argument("To < 0");
+                  if(From < 0)
+                        throw std::invalid_argument("From < 0");
+                  if(To > this->Length)
+                        To = this->Length;
+                  if(From < 0)
+                        From = 0;
+
+                  const std::uint64_t NewSize  = To - From;
+                  unsigned char *     NewBytes = new unsigned char[NewSize];
+
+                  for(std::uint64_t Iterator = From; Iterator < To; ++Iterator)
+                        NewBytes[Iterator] = this->Bytes[Iterator];
+
+                  return NewBytes;
             }
             // Method, which is removing a leading zeros
             // Before: Block[a1 = 0, a2 = 0, a3 = 0, ..., ak != 0, ak+1 != 0, ak+2 != 0, ..., af = 0, ..., aN] | N, k, f ∈ ℕ
@@ -350,7 +443,7 @@ class Block
                   {
                         for(; Iterator < this->Length; ++Iterator)
                               NewBytes[Iterator] = this->Bytes[Iterator];
-                        for(; Iterator <= NewSize; ++Iterator)
+                        for(; Iterator < NewSize; ++Iterator)
                               NewBytes[Iterator] = 0;
                   } else if(NewSize < this->Length)
                   {
@@ -421,7 +514,7 @@ class Block
             // otherwise will decimal
             //
             // Case is following an Uppercase or Lowercase symbols. You can choose them by ::toupper or ::tolower from STL
-            template <typename Type>
+            template <typename Type = unsigned int>
             std::string string(std::uint64_t Period = 0, const char * Separator = "", const Type NS = 10,
                                int (*Case)(int) noexcept = ::toupper) const
             {
