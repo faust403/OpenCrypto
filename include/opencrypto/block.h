@@ -33,6 +33,7 @@ class Block
             {
                   assert((void("Bad allocation in constructor"), this->Bytes != NULL));
                   std::memcpy(this->Bytes, Other.data(), this->Length);
+                  this->shrink_to_fit();
             }
             // Move the Other Block to this. If you wrote Block<N> block(move(OtherBlock)); | OtherBlock.size() = N+k, then
             // block.size() = N+k | N, k ∈ ℕ, k >= N
@@ -42,6 +43,7 @@ class Block
             {
                   assert((void("Bad allocation in constructor"), this->Bytes != NULL));
                   std::memcpy(this->Bytes, std::move(Other.data()), this->Length);
+                  this->shrink_to_fit();
                   Other.clear();
             }
             // Copy the dynamic array to this Block. If you wrote Block<N> block(ptr); | #ptr >= N, then
@@ -1403,7 +1405,23 @@ class Block
                   return true;
             }
             // mod 10 if this->Length <= 8 and otherwise Double dabble algorithm
-            std::string bigdec(void) const noexcept;
+            std::string bigdec(void) const noexcept
+            {
+                  if(this->Bytes == NULL or this->Length == 0)
+                        throw std::out_of_range("Block->Bytes[NULL] or Block->Length = 0");
+
+                  unsigned char   Counter = 0;
+                  std::string     String;
+                  unsigned char * DDA      = new unsigned char[this->Length];
+                  std::uint64_t   Iterator = 0;
+                  for(; Iterator < this->Length; ++Iterator)
+                        DDA[Iterator] = 0;
+
+                  Iterator = 0;
+                  for(; Iterator < this->Length; ++Iterator)
+                        String.insert(0, std::to_string(DDA[Iterator] & 15)).insert(0, std::to_string(DDA[Iterator] >> 4));
+                  return String;
+            }
             std::string bighex(void) noexcept;
             std::string bigbin(void) const noexcept { return this->string(0, "", 2); }
 
