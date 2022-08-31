@@ -82,6 +82,7 @@ class Block
 
                   for(std::uint64_t Iterator = 8; Iterator > 0; --Iterator)
                         this->Bytes[Iterator - 1] |= (Number >> (8 * (8 - Iterator)));
+                  this->shrink_to_fit();
             }
             // Simple distructor with deleting the Bytes field
             virtual ~Block(void) noexcept { delete this->Bytes; }
@@ -1376,9 +1377,35 @@ class Block
                   this->Bytes = NewBytes;
                   return *this;
             }
-            std::string bigdec(void) noexcept;
+            bool is_zero(void) const noexcept
+            {
+                  for(std::uint64_t Iterator = 0; Iterator < this->Length; ++Iterator)
+                        if(this->Bytes[Iterator])
+                              return false;
+                  return true;
+            }
+            // mod 10 if this->Length <= 8 and otherwise Double dabble algorithm
+            std::string bigdec(void) const noexcept;
             std::string bighex(void) noexcept;
-            std::string bigbin(void) noexcept;
+            std::string bigbin(void) const noexcept { return this->string(0, "", 2); }
+
+            template <typename Type>
+            constexpr Block & pow(const Type Power) noexcept;
+            template <std::uint64_t BlockSize>
+            constexpr Block & pow(const Block<BlockSize> & Other) noexcept;
+            template <std::uint64_t BlockSize>
+            constexpr Block & pow(const Block<BlockSize> && Other) noexcept;
+            template <typename Type>
+            constexpr Block & pow(const unsigned char * Other, const Type ByteSize) noexcept;
+
+            template <typename Type1, typename Type2>
+            constexpr Block & powmod(const Type1 Power, const Type2 Mod) noexcept;
+            template <std::uint64_t BlockSize, typename Type>
+            constexpr Block & powmod(const Block<BlockSize> & Other, const Type Mod) noexcept;
+            template <std::uint64_t BlockSize, typename Type>
+            constexpr Block & powmod(const Block<BlockSize> && Other, const Type Mod) noexcept;
+            template <typename Type>
+            constexpr Block & powmod(const unsigned char * Other, const Type ByteSize) noexcept;
 
             Block & operator+= (const Block & Other) noexcept;
             Block & operator-= (const Block & Other) noexcept;
@@ -1526,12 +1553,29 @@ class Block
             template <typename Type>
             Block & operator<<= (const Type Shift) noexcept;
 
-            Block &         operator!(void) noexcept;
-            Block &         operator~(void) noexcept;
-            unsigned char * operator* (void) noexcept;
+            Block & operator!(void) noexcept
+            {
+                  for(std::uint64_t Iterator = 0; Iterator < this->Length; ++Iterator)
+                        this->Bytes[Iterator] = !this->Bytes[Iterator];
+                  return *this;
+            }
+            Block &         operator~(void) noexcept { return !*this; }
+            unsigned char * operator* (void) noexcept { return this->data(); }
 
             template <typename Type>
-            unsigned char & operator[] (const Type Index) noexcept;
+            bool operator[] (Type Index) noexcept
+            {
+                  static_assert(std::is_integral_v<Type>,
+                                "In Block::operator[Type Index] Type is not an integer, however should be");
+                  if(Index > this->Length * 8 - 1 or Index < 0)
+                        throw std::out_of_range("Out of range in Block::operator[" + std::to_string(Index) + "]");
+
+                  std::uint64_t ByteIndex = 0;
+                  for(; Index >= 8; Index -= 8)
+                        ByteIndex += 1;
+
+                  return (this->Bytes[ByteIndex] & (1 << (7 - Index)));
+            }
 };
 template <std::uint64_t Size = 0>
 class Informative_Block : public Block<Size>
