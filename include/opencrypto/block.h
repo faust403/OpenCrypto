@@ -45,14 +45,32 @@ class Block
                   Other.clear();
             }
             // Copy the dynamic array to this Block. If you wrote Block<N> block(ptr); | #ptr >= N, then
-            // block.size() = N. Otherwise it will considering memory rubbish | N ∈ ℕ
+            // block.size() = N. Otherwise it may considering memory rubbish | N ∈ ℕ
             template <typename Type>
             constexpr explicit Block(Type * NewBytes) noexcept : Bytes(new unsigned char[Size])
             {
                   static_assert(std::is_same_v<std::remove_const_t<Type>, unsigned char>,
                                 "The constructor Block:Block(Type * NewBytes) have got Type != unsigned char");
+
                   assert((void("Bad allocation in constructor"), this->Bytes != NULL));
                   std::memcpy(this->Bytes, NewBytes, Size);
+            }
+            // Copy the dynamic array to this Block. If you wrote Block<N> block(ptr, #ptr); | #ptr >= N, then
+            // block.size() = #ptr. Otherwise it may considering memory rubbish | N ∈ ℕ
+            template <typename Type1, typename Type2>
+            constexpr explicit Block(Type1 * NewBytes, const Type2 ByteSize) noexcept
+            {
+                  static_assert(
+                      std::is_same_v<std::remove_const_t<Type1>, unsigned char>,
+                      "The constructor Block:Block(Type * NewBytes, const Type2 ByteSize) have got Type1 != unsigned char");
+                  static_assert(std::is_integral_v<Type2>,
+                                "The constructor Block:Block(Type * NewBytes, const Type2 ByteSize) have got Type2, which is not "
+                                "an integral, but integral required");
+
+                  this->Length = ByteSize;
+                  this->Bytes  = new unsigned char[this->Length];
+                  assert((void("Bad allocation in constructor"), this->Bytes != NULL));
+                  std::memcpy(this->Bytes, NewBytes, ByteSize);
             }
             // Copy the parameter pack to this Block. If you wrote Block<N> block(a1, a2, a3, ..., aN+k); | then
             // block.size() = N+k | N, k ∈ ℕ, k >= N
@@ -1545,13 +1563,119 @@ class Block
             Block & operator&= (const Type Other) noexcept;
 
             template <typename Type>
-            Block & operator>> (const Type Shift) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator>> (Type Shift) noexcept
+            {
+                  if(this->Bytes == NULL or this->Length == 0)
+                        throw std::out_of_range("Block->Bytes[NULL] or Block->Length = 0");
+
+                  unsigned char * CurrentBytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in operator <<"), CurrentBytes != NULL));
+                  std::memcpy(CurrentBytes, this->Bytes, this->Length);
+
+                  std::uint64_t ByteShift = 0;
+                  for(; Shift >= 8; Shift -= 8)
+                        ByteShift += 1;
+
+                  std::uint64_t Iterator = this->Length;
+                  for(; Iterator > 0; --Iterator)
+                        if(Iterator - ByteShift < 0)
+                              CurrentBytes[Iterator - 1] = 0;
+                        else
+                              CurrentBytes[Iterator - 1] = CurrentBytes[Iterator - ByteShift - 1];
+                  Iterator = this->Length;
+                  for(; Iterator > 0; --Iterator)
+                  {
+                        CurrentBytes[Iterator] >>= Shift;
+                        CurrentBytes[Iterator] |= (CurrentBytes[Iterator - 1] << (8 - Shift));
+                  }
+                  CurrentBytes[0] >>= Shift;
+                  return std::make_pair(CurrentBytes, this->Length);
+            }
             template <typename Type>
-            Block & operator>>= (const Type Shift) noexcept;
+            Block & operator>>= (Type Shift) noexcept
+            {
+                  if(this->Bytes == NULL or this->Length == 0)
+                        throw std::out_of_range("Block->Bytes[NULL] or Block->Length = 0");
+                  if(Shift <= 0)
+                        return *this;
+
+                  std::uint64_t ByteShift = 0;
+                  for(; Shift >= 8; Shift -= 8)
+                        ByteShift += 1;
+
+                  std::uint64_t Iterator = this->Length;
+                  for(; Iterator > 0; --Iterator)
+                        if(Iterator - ByteShift < 0)
+                              this->Bytes[Iterator - 1] = 0;
+                        else
+                              this->Bytes[Iterator - 1] = this->Bytes[Iterator - ByteShift - 1];
+                  Iterator = this->Length;
+                  for(; Iterator > 0; --Iterator)
+                  {
+                        this->Bytes[Iterator] >>= Shift;
+                        this->Bytes[Iterator] |= (this->Bytes[Iterator - 1] << (8 - Shift));
+                  }
+                  this->Bytes[0] >>= Shift;
+                  this->shrink_to_fit();
+                  return *this;
+            }
             template <typename Type>
-            Block & operator<< (const Type Shift) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator<< (Type Shift) noexcept
+            {
+                  if(this->Bytes == NULL or this->Length == 0)
+                        throw std::out_of_range("Block->Bytes[NULL] or Block->Length = 0");
+
+                  unsigned char * CurrentBytes = new unsigned char[this->Length];
+                  assert((void("Bad allocation in operator <<"), CurrentBytes != NULL));
+                  std::memcpy(CurrentBytes, this->Bytes, this->Length);
+
+                  std::uint64_t ByteShift = 0;
+                  for(; Shift >= 8; Shift -= 8)
+                        ByteShift += 1;
+
+                  std::uint64_t Iterator = 0;
+                  for(; Iterator < this->Length; ++Iterator)
+                        if(Iterator + ByteShift > this->Length - 1)
+                              CurrentBytes[Iterator] = 0;
+                        else
+                              CurrentBytes[Iterator] = CurrentBytes[Iterator + ByteShift];
+                  Iterator = 0;
+                  for(; Iterator < this->Length - 1; ++Iterator)
+                  {
+                        CurrentBytes[Iterator] <<= Shift;
+                        CurrentBytes[Iterator] |= (CurrentBytes[Iterator + 1] >> (8 - Shift));
+                  }
+                  CurrentBytes[this->Length - 1] <<= Shift;
+                  return std::make_pair(CurrentBytes, this->Length);
+            }
             template <typename Type>
-            Block & operator<<= (const Type Shift) noexcept;
+            Block & operator<<= (Type Shift) noexcept
+            {
+                  if(this->Bytes == NULL or this->Length == 0)
+                        throw std::out_of_range("Block->Bytes[NULL] or Block->Length = 0");
+                  if(Shift <= 0)
+                        return *this;
+
+                  std::uint64_t ByteShift = 0;
+                  for(; Shift >= 8; Shift -= 8)
+                        ByteShift += 1;
+
+                  std::uint64_t Iterator = 0;
+                  for(; Iterator < this->Length; ++Iterator)
+                        if(Iterator + ByteShift > this->Length - 1)
+                              this->Bytes[Iterator] = 0;
+                        else
+                              this->Bytes[Iterator] = this->Bytes[Iterator + ByteShift];
+                  Iterator = 0;
+                  for(; Iterator < this->Length - 1; ++Iterator)
+                  {
+                        this->Bytes[Iterator] <<= Shift;
+                        this->Bytes[Iterator] |= (this->Bytes[Iterator + 1] >> (8 - Shift));
+                  }
+                  this->Bytes[this->Length - 1] <<= Shift;
+                  this->shrink_to_fit();
+                  return *this;
+            }
 
             Block & operator!(void) noexcept
             {
@@ -1559,8 +1683,8 @@ class Block
                         this->Bytes[Iterator] = !this->Bytes[Iterator];
                   return *this;
             }
-            Block &         operator~(void) noexcept { return !*this; }
-            unsigned char * operator* (void) noexcept { return this->data(); }
+            Block &               operator~(void) noexcept { return !*this; }
+            const unsigned char * operator* (void) noexcept { return this->data(); }
 
             template <typename Type>
             bool operator[] (Type Index) noexcept
