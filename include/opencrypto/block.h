@@ -1528,37 +1528,37 @@ class Block
             template <typename Type>
             bool operator!= (const Type Other) noexcept;
 
-            Block & operator| (const Block & Other) noexcept;
-            Block & operator|= (const Block & Other) noexcept;
-            Block & operator^ (const Block & Other) noexcept;
-            Block & operator^= (const Block & Other) noexcept;
-            Block & operator& (const Block & Other) noexcept;
-            Block & operator&= (const Block & Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator| (const Block & Other) noexcept;
+            Block &                                   operator|= (const Block & Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator^ (const Block & Other) noexcept;
+            Block &                                   operator^= (const Block & Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator& (const Block & Other) noexcept;
+            Block &                                   operator&= (const Block & Other) noexcept;
 
-            Block & operator| (const Block && Other) noexcept;
-            Block & operator|= (const Block && Other) noexcept;
-            Block & operator^ (const Block && Other) noexcept;
-            Block & operator^= (const Block && Other) noexcept;
-            Block & operator& (const Block && Other) noexcept;
-            Block & operator&= (const Block && Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator| (const Block && Other) noexcept;
+            Block &                                   operator|= (const Block && Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator^ (const Block && Other) noexcept;
+            Block &                                   operator^= (const Block && Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator& (const Block && Other) noexcept;
+            Block &                                   operator&= (const Block && Other) noexcept;
 
-            Block & operator| (const unsigned char * Other) noexcept;
-            Block & operator|= (const unsigned char * Other) noexcept;
-            Block & operator^ (const unsigned char * Other) noexcept;
-            Block & operator^= (const unsigned char * Other) noexcept;
-            Block & operator& (const unsigned char * Other) noexcept;
-            Block & operator&= (const unsigned char * Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator| (const unsigned char * Other) noexcept;
+            Block &                                   operator|= (const unsigned char * Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator^ (const unsigned char * Other) noexcept;
+            Block &                                   operator^= (const unsigned char * Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator& (const unsigned char * Other) noexcept;
+            Block &                                   operator&= (const unsigned char * Other) noexcept;
 
             template <typename Type>
-            Block & operator| (const Type Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator| (const Type Other) noexcept;
             template <typename Type>
             Block & operator|= (const Type Other) noexcept;
             template <typename Type>
-            Block & operator^ (const Type Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator^ (const Type Other) noexcept;
             template <typename Type>
             Block & operator^= (const Type Other) noexcept;
             template <typename Type>
-            Block & operator& (const Type Other) noexcept;
+            std::pair<unsigned char *, std::uint64_t> operator& (const Type Other) noexcept;
             template <typename Type>
             Block & operator&= (const Type Other) noexcept;
 
