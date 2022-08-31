@@ -1410,16 +1410,24 @@ class Block
                   if(this->Bytes == NULL or this->Length == 0)
                         throw std::out_of_range("Block->Bytes[NULL] or Block->Length = 0");
 
-                  unsigned char   Counter = 0;
-                  std::string     String;
+                  std::string String;
+                  String.reserve(this->Length * 2);
                   unsigned char * DDA      = new unsigned char[this->Length];
                   std::uint64_t   Iterator = 0;
                   for(; Iterator < this->Length; ++Iterator)
                         DDA[Iterator] = 0;
 
-                  Iterator = 0;
-                  for(; Iterator < this->Length; ++Iterator)
-                        String.insert(0, std::to_string(DDA[Iterator] & 15)).insert(0, std::to_string(DDA[Iterator] >> 4));
+                  // There was Matthew McConaughey
+
+                  std::uint64_t StringIterator = 0, DDAIterator = 0;
+                  for(; DDAIterator < this->Length;)
+                  {
+                        String[StringIterator]     = std::to_string((DDA[DDAIterator] >> 4) & 15);
+                        String[StringIterator + 1] = std::to_string(DDA[DDAIterator] & 15);
+
+                        StringIterator += 2;
+                        ++DDAIterator;
+                  }
                   return String;
             }
             std::string bighex(void) noexcept;
